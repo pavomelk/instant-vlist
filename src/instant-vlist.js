@@ -8,10 +8,10 @@ We use two ways of mutating rendered items depending on the scrolling type:
 - incremental growth: when user scrolls within the rendered window, we append/prepend a few items at a time and remove from the opposite end if we exceed MAX_RENDERED. this allows for smooth scrolling with a large dataset while keeping DOM size manageable.
 - hard reset: when user scrolls violently (e.g. dragging scrollbar thumb), we jump-scroll and render a new window centered around the new scroll position based on estimated height of items.
 One of the challenges of presenting large data as scrollable content is finding good way to compensate for browser's limitations on maximum height of elements (around 33 million pixels in Chrome), 
-when approaching that limit browsers tend to behave erratically. To address this, we introduce dynamic scaling of the render window and spacers when we detect that total height growing beyond a certain threshold (MAX_SPACER_HEIGHT), 
+when approaching that limit browsers tend to behave erratically. To address this, we introduce dynamic scaling of the render window and spacers when we detect that total height is growing beyond a certain threshold (MAX_SPACER_HEIGHT), 
 which allows us to handle much larger datasets while still providing fairly smooth scrolling experience.
 The other challenge was to ensure synchronous re-calculation of the layout to accurately adjust scroll position in response to DOM mutations. 
-There still might be noticeable lack of smoothness in scrolling, especially during data load.
+As there is no exact science on how to test avalanche of asyncronous javascript executions, this code is not covered by any authomated tests because the author is not aware of any good techniques to do so.
 */
   
   const { visibleList, spacerTop, spacerBottom } = createDOMNodesForScrolling(container);
@@ -38,12 +38,12 @@ There still might be noticeable lack of smoothness in scrolling, especially duri
     MAX_RENDERED: 24, //MAX_RENDERED = MIN_RENDERED + 2 * EXTEND_CHUNK to allow for smooth incremental scrolling without causing too much overhead from rendering too many items, especially when scaling is applied for large datasets. we can experiment with different values to find a good balance between performance and scroll smoothness.
     EXTEND_CHUNK: 8, //nuber of items that go beyond the viewport when we extend the render window during incremental scrolling. this should be enough to allow for smooth scrolling without causing too much overhead from rendering too many items, especially when scaling is applied for large datasets. we can experiment with different values to find a good balance.
     EDGE_EXTEND: 6,  //number of items from the edge of the viewport at which we trigger an extension of the render window during incremental scrolling. this should be enough to allow for smooth scrolling without causing too much overhead from rendering too many items, especially when scaling is applied for large datasets. we can experiment with different values to find a good balance between performance and scroll smoothness.
-    FEASABLE_LENGTH: 100  // minimum number of items that make the virtualized rendering approach feasible
+    FEASABLE_LENGTH: 100  // minimum number of items that make the virtualized rendering approach feasible. If less than, then we just fall back to rendering all items at once.
   };
 
-  const VIOLENT_SCROLL_DELTA = 800;
+  const VIOLENT_SCROLL_DELTA = 800; //this value helps us to differrenciate between rapid and smooth scroll requests.
 
-  const DEBUG_RENDER_WINDOW = false;
+  const DEBUG_RENDER_WINDOW = false; //if set to true, we get some debug information in console log.
 
   const filter = data.filterAPI;
   const navigation = {
@@ -51,7 +51,7 @@ There still might be noticeable lack of smoothness in scrolling, especially duri
   };
 
   container.style.overflowAnchor = "none"; // to keep browser from arbitrarily adjusting scroll position during DOM mutations, which results in incorrect positioning of rendered items and spacers, which visually appears as no items in the list.
-  container.style.scrollBehavior = "auto"; // lagging in scroll will reveal blans space.  (yes, we may increse number of rendered items to takle that, but no)
+  container.style.scrollBehavior = "auto"; // don't use "smooth scroll" because lagging in rendering scrollable items will reveal blank spaces of the spacers.  (yes, we may increse number of rendered items to takle that, but it still will look ugly)
   container.addEventListener("scroll", onScroll);
   container.addEventListener("wheel", () => { lastWheelTime = performance.now(); }, { passive: true });
   
@@ -407,10 +407,6 @@ There still might be noticeable lack of smoothness in scrolling, especially duri
     lastScrollTop = renderStartIndex * estimatedItemHeight / scaler;
     container.scrollTop = lastScrollTop;
     requestAnimationFrame(() => visibleList.firstChild?.scrollIntoView({ block: "start" }) );
-  }
-
-  function debugEntry(){
-    console.log("Accessing internal structures");
   }
 
   function DataSource(onUpdate, options = {}) {
