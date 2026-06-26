@@ -29,4 +29,15 @@ describe("NDJSON worker", () => {
 		expect(body).toContain('"id":1');
 		expect(body).toContain('"id":10');
 	});
+
+	it("respects the num_records query parameter", async () => {
+		const request = new IncomingRequest("http://example.com?num_records=3");
+		const ctx = createExecutionContext();
+		const response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+		const body = await response.text();
+		expect(body).toContain('"id":1');
+		expect(body).toContain('"id":3');
+		expect(body).not.toContain('"id":4');
+	});
 });

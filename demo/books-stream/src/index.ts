@@ -15,12 +15,16 @@ import { NDJSONItemGenerator } from "./ndjson-generator";
 
 export default {
 	async fetch(request, env, ctx): Promise<Response> {
+		const url = new URL(request.url);
+		const requestedRecords = Number.parseInt(url.searchParams.get("num_records") ?? "10", 10);
+		const count = Number.isFinite(requestedRecords) && requestedRecords > 0 ? requestedRecords : 10;
+
 		const generator = new NDJSONItemGenerator();
 		const encoder = new TextEncoder();
 
 		const stream = new ReadableStream({
 			async start(controller) {
-				for (let index = 0; index < 10; index += 1) {
+				for (let index = 0; index < count; index += 1) {
 					const item = generator.GetNext();
 					controller.enqueue(encoder.encode(`${JSON.stringify(item)}\n`));
 					await new Promise((resolve) => setTimeout(resolve, 100));
