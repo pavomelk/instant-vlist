@@ -10,8 +10,7 @@ We use two ways of mutating rendered items depending on the scrolling type:
 One of the challenges of presenting large data as scrollable content is finding good way to compensate for browser's limitations on maximum height of elements (around 33 million pixels in Chrome), 
 when approaching that limit browsers tend to behave erratically. To address this, we introduce dynamic scaling of the render window and spacers when we detect that total height is growing beyond a certain threshold (MAX_SPACER_HEIGHT), 
 which allows us to handle much larger datasets while still providing fairly smooth scrolling experience.
-The other challenge was to ensure synchronous re-calculation of the layout to accurately adjust scroll position in response to DOM mutations. 
-As there is no exact science on how to test avalanche of asyncronous javascript executions, this code is not covered by any authomated tests because the author is not aware of any good techniques to do so.
+The other challenge was to ensure coherent re-calculation of the layout to accurately adjust scroll position in response to DOM mutations. 
 */
   
   const { visibleList, spacerTop, spacerBottom } = createDOMNodesForScrolling(container);
@@ -94,12 +93,12 @@ As there is no exact science on how to test avalanche of asyncronous javascript 
           initWindow();
         }
         BASE.EXTEND_CHUNK = 3; //once transmission ended we reduce boundaries to smoothen scrolling 
-        BASE.EDGE_EXTEND = 2;  //(because adding big chunks of items causes list position to shutter more noticeably)
+        BASE.EDGE_EXTEND = 2;  //(because adding big chunks of items causes more noticeable shutter of the list position)
         updateSpacers(); // data is final → update spacers only, preserve scroll
         break;
 
       case "incremental":
-        if(performance.now() - lastIncrementalUpdateTime < 100) { //throttling (think if can be parametrized)
+        if(performance.now() - lastIncrementalUpdateTime < 100) { //throttling (think if it is worth to be parametrized)
             return;
         }
         else {
@@ -124,9 +123,6 @@ As there is no exact science on how to test avalanche of asyncronous javascript 
     }
     if (Math.abs(delta) > VIOLENT_SCROLL_DELTA * scaler) { // Large delta without wheel → jump scroll
       return "jump";
-    }
-    if(delta == 0){
-      return "ignore";
     }
     return "continuous";
   }
@@ -730,7 +726,6 @@ As there is no exact science on how to test avalanche of asyncronous javascript 
   }
 
   return {
-    debugEntry,
     data,
     filter,
     navigation
