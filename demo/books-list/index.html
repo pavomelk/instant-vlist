@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width,initial-scale=1" />
+	<title>Books - instant-vlist demo</title>
+	<style>
+		body { font-family: system-ui, sans-serif; margin: 0; padding: 16px; }
+		#controls { margin-bottom: 12px; display:flex; gap:8px; align-items:center; }
+		#list { height: 70vh; overflow:auto; border:1px solid #ddd; padding:8px; }
+		.item { padding:8px; border-bottom:1px solid #eee; }
+		.title { font-weight:700; }
+		.meta { color:#555; font-size:0.9em; margin-top:4px; }
+		mark { background: #fffb91; }
+	</style>
+</head>
+<body>
+	<div id="controls">
+		<input id="search" placeholder="Search title/publisher/category..." style="flex:1;padding:8px" />
+		<button id="clear">Clear</button>
+	</div>
+	<div id="list" aria-live="polite"></div>
+
+	<script src="instant-vlist.js" type="text/javascript"></script>
+
+	<script>
+
+
+	function renderItem(item, regex) {
+
+		let text = item.title.replaceAll(regex, '\<mark\>\$&\<\/mark\>')||"";
+		
+
+
+		// simple highlighter
+
+		// for (let i = matches.length - 1; i >= 0; i--) {
+		// 	const { start, end } = matches[i];
+		// 	text =
+		// 	text.slice(0, start) +
+		// 	`<mark>` +
+		// 	text.slice(start, end) +
+		// 	`</mark>` +
+		// 	text.slice(end);
+		// }
+
+
+		return `
+			<div class="item" style="cursor:pointer">
+				<div class="title">${item.id}, ${text}</div>
+				<div class="meta">
+					<span class="author">${item.publisher}</span>
+					• ${item.year}
+					• <em>${item.isbn}</em>
+				</div>
+				<div class="desc" style="margin-top:6px">
+					${item.category}
+				</div>
+			</div>
+		`;
+	}
+
+	const container = document.getElementById("list");
+	const vlist = VirtualList(container, renderItem); 	
+
+	// Wire search input
+	document.getElementById("search").addEventListener("input", (e) => {
+		vlist.filter.setSearch(e.target.value);
+	});
+
+	const params = new URLSearchParams(window.location.search);
+	const defaultRecordCount = params.get("num_records") || "1000";
+	// const defaultStreamUrl = `https://books-stream.pavomelk.workers.dev/?num_records=${encodeURIComponent(defaultRecordCount)}`;
+	const defaultStreamUrl = `http://127.0.0.1:8787/?num_records=${encodeURIComponent(defaultRecordCount)}`;
+	const streamUrl = params.get("stream") || defaultStreamUrl;
+
+	vlist.data.fetchStream(encodeURI(streamUrl)).catch((err) => {
+		console.error("Failed to fetch stream:", err);
+		container.innerHTML = '<div class="item">Failed to load data stream. Use ?num_records=500 or ?stream=YOUR_NDJSON_URL.</div>';
+	});
+
+	</script>
+
+</body>
+</html>

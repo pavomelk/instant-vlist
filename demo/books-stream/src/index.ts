@@ -13,8 +13,41 @@
 
 import { NDJSONItemGenerator } from "./ndjson-generator";
 
+const allowedOrigins = new Set([
+	"https://demo.books-list-instant.pages.dev",
+	"http://127.0.0.1:5501",
+]);
+
+function getCorsOrigin(request: Request): string | null {
+	const origin = request.headers.get("Origin");
+	if (!origin || !allowedOrigins.has(origin)) {
+		return null;
+	}
+
+	return origin;
+}
+
 export default {
 	async fetch(request, env, ctx): Promise<Response> {
+		const corsOrigin = getCorsOrigin(request);
+		const corsHeaders = corsOrigin
+			? {
+				"Access-Control-Allow-Origin": corsOrigin,
+				"Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+				"Access-Control-Allow-Headers": "Content-Type",
+			}
+			: {
+				"Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+				"Access-Control-Allow-Headers": "Content-Type",
+			};
+
+		if (request.method === "OPTIONS") {
+			return new Response(null, {
+				status: 204,
+				headers: corsHeaders,
+			});
+		}
+
 		const url = new URL(request.url);
 		const requestedRecords = Number.parseInt(url.searchParams.get("num_records") ?? "10", 10);
 		const count = Number.isFinite(requestedRecords) && requestedRecords > 0 ? requestedRecords : 10;
@@ -35,6 +68,7 @@ export default {
 
 		return new Response(stream, {
 			headers: {
+				...corsHeaders,
 				"content-type": "application/x-ndjson; charset=utf-8",
 			},
 		});

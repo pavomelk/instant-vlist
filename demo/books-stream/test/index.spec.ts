@@ -12,6 +12,34 @@ import worker from "../src/index";
 const IncomingRequest = Request<unknown, IncomingRequestCfProperties>;
 
 describe("NDJSON worker", () => {
+	it("returns a matching CORS origin for allowed browser requests", async () => {
+		const request = new IncomingRequest("http://example.com", {
+			headers: {
+				Origin: "http://localhost:5501",
+			},
+		});
+		const ctx = createExecutionContext();
+		const response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(response.headers.get("Access-Control-Allow-Origin")).toBe("http://localhost:5501");
+	});
+
+	it("responds to CORS preflight requests", async () => {
+		const request = new IncomingRequest("http://example.com", {
+			method: "OPTIONS",
+			headers: {
+				Origin: "https://demo.books-list-instant.pages.dev",
+			},
+		});
+		const ctx = createExecutionContext();
+		const response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(response.status).toBe(204);
+		expect(response.headers.get("Access-Control-Allow-Origin")).toBe("https://demo.books-list-instant.pages.dev");
+	});
+
 	it("streams NDJSON content (unit style)", async () => {
 		const request = new IncomingRequest("http://example.com");
 		const ctx = createExecutionContext();
