@@ -61,7 +61,7 @@
 	}
 
 	const container = document.getElementById("list");
-	const vlist = VirtualList(container, renderItem); 	
+	const vlist = VirtualList(container, renderItem, item=>item.title); 	
 
 	// Wire search input
 	document.getElementById("search").addEventListener("input", (e) => {

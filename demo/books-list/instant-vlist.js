@@ -1,4 +1,4 @@
-function VirtualList(container, renderItem) {
+function VirtualList(container, renderItem, extractItemText) {
 /* 
 This is virtual list whose purpose is to handle rendering datasets that potentially can grow to large amount of items (hundreds of thousands or more). 
 It was designet for being able to display items immediately after they start to arrive from the stream. Data component of this list expects stream to be in *NDJSON* format and it exposes API for further interacting with the data.
@@ -80,11 +80,9 @@ The other challenge was to ensure coherent re-calculation of the layout to accur
 
   function onDataUpdated(event = {type: "incremental"|"rebuild"|"eot"}) {  //called by the data source 
     const { type } = event;
-    if(isScalerAdjusting(event)) return;
+    if(isScalerAdjusting(event) && type != "rebuild") return; //scaler may adjust back to 1 when rebuild is needed. We still need to proceed furter in such cases
     if(data.length() < BASE.FEASABLE_LENGTH){ //start with conventional rendering when data is too small.
         conventionalRenderingMode = true;
-        // BASE.MIN_RENDERED = data.length();
-        // BASE.MAX_RENDERED = data.length();
         switch(type){
           case "rebuild":
             spacerTop.style.height = "0px";
@@ -596,7 +594,6 @@ The other challenge was to ensure coherent re-calculation of the layout to accur
 
     function rebuild() {
       //matchInfo.clear();
-
       const hasPredicates = facetPredicates.size > 0 || customPredicates.size > 0;
       const hasQuery = !!query;
 
@@ -629,8 +626,9 @@ The other challenge was to ensure coherent re-calculation of the layout to accur
       }
 
       if (!query) return true;
+      if (!extractItemText) return true;
 
-      const text = item.title.toLowerCase() || "";
+      const text = extractItemText(item).toLowerCase() || "";
       return text.includes(query);
     }
 
@@ -689,6 +687,10 @@ The other challenge was to ensure coherent re-calculation of the layout to accur
     const filterAPI = {
       // text search
       setSearch: q => { //example virutalList.filter.setSearch("bank of america")
+        if(!extractItemText){
+          console.error("Search requires function for extracting item's text to be searched on. Example: [const vlist = VirtualList(container, renderItem, item => item.Title);]");
+          return; 
+        }
         if(q){
           query = q.toLowerCase();
           const r = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
