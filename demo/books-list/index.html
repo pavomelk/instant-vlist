@@ -7,6 +7,7 @@
 	<style>
 		body { font-family: system-ui, sans-serif; margin: 0; padding: 16px; }
 		#controls { margin-bottom: 12px; display:flex; gap:8px; align-items:center; }
+		#controls select { padding: 8px; min-width: 160px; }
 		#list { height: 70vh; overflow:auto; border:1px solid #ddd; padding:8px; }
 		.item { padding:8px; border-bottom:1px solid #eee; }
 		.title { font-weight:700; }
@@ -16,7 +17,13 @@
 </head>
 <body>
 	<div id="controls">
-		<input id="search" placeholder="Search title/publisher/category..." style="flex:1;padding:8px" />
+		<input id="search" placeholder="Search title..." style="flex:1;padding:8px" />
+		<select id="publisher-filter" aria-label="Filter by publisher">
+			<option value="">All publishers</option>
+		</select>
+		<select id="category-filter" aria-label="Filter by category">
+			<option value="">All categories</option>
+		</select>
 		<button id="clear">Clear</button>
 	</div>
 	<div id="list" aria-live="polite"></div>
@@ -29,21 +36,6 @@
 	function renderItem(item, regex) {
 
 		let text = item.title.replaceAll(regex, '\<mark\>\$&\<\/mark\>')||"";
-		
-
-
-		// simple highlighter
-
-		// for (let i = matches.length - 1; i >= 0; i--) {
-		// 	const { start, end } = matches[i];
-		// 	text =
-		// 	text.slice(0, start) +
-		// 	`<mark>` +
-		// 	text.slice(start, end) +
-		// 	`</mark>` +
-		// 	text.slice(end);
-		// }
-
 
 		return `
 			<div class="item" style="cursor:pointer">
@@ -62,11 +54,83 @@
 
 	const container = document.getElementById("list");
 	const vlist = VirtualList(container, renderItem, item=>item.title); 	
+	const searchInput = document.getElementById("search");
+	const publisherSelect = document.getElementById("publisher-filter");
+	const categorySelect = document.getElementById("category-filter");
+	let searchDebounceTimer = null;
 
 	// Wire search input
-	document.getElementById("search").addEventListener("input", (e) => {
-		vlist.filter.setSearch(e.target.value);
+	searchInput.addEventListener("input", (e) => {
+		clearTimeout(searchDebounceTimer);
+		searchDebounceTimer = setTimeout(() => {
+			vlist.filter.setSearch(e.target.value);
+		}, 500);
 	});
+
+	function buildFacetOptions(selectEl, values, placeholder) {
+		const selected = selectEl.value;
+		selectEl.innerHTML = "";
+
+		const defaultOption = document.createElement("option");
+		defaultOption.value = "";
+		defaultOption.textContent = placeholder;
+		selectEl.appendChild(defaultOption);
+
+		for (const value of values) {
+			const option = document.createElement("option");
+			option.value = value;
+			option.textContent = value;
+			selectEl.appendChild(option);
+		}
+
+		if (selected && values.includes(selected)) {
+			selectEl.value = selected;
+		} else {
+			selectEl.value = "";
+		}
+	}
+
+	function refreshFacetControls() {
+		buildFacetOptions(publisherSelect, vlist.data.getFacetValues("publisher"), "All publishers");
+		buildFacetOptions(categorySelect, vlist.data.getFacetValues("category"), "All categories");
+	}
+
+	function applyFacet(attr, value) {
+		if (value) {
+			vlist.filter.addFacet(attr, value);
+		} else {
+			vlist.filter.removeFacet(attr);
+		}
+	}
+
+	publisherSelect.addEventListener("change", (e) => {
+		applyFacet("publisher", e.target.value);
+	});
+
+	categorySelect.addEventListener("change", (e) => {
+		applyFacet("category", e.target.value);
+	});
+
+	vlist.data.subscribeResultChanging(() => {
+		refreshFacetControls();
+	});
+
+	document.getElementById("clear").addEventListener("click", () => {
+		clearTimeout(searchDebounceTimer);
+		searchInput.value = "";
+		publisherSelect.value = "";
+		categorySelect.value = "";
+		vlist.filter.clearAll();
+		refreshFacetControls();
+	});
+
+	refreshFacetControls();
+	const facetRefreshInterval = setInterval(() => {
+		refreshFacetControls();
+		if (!vlist.data.isStreaming()) {
+			clearInterval(facetRefreshInterval);
+		}
+	}, 300);
 
 	const params = new URLSearchParams(window.location.search);
 	const defaultRecordCount = params.get("num_records") || "1000";
@@ -75,6 +139,7 @@
 	const streamUrl = params.get("stream") || defaultStreamUrl;
 
 	vlist.data.fetchStream(encodeURI(streamUrl)).catch((err) => {
+		clearInterval(facetRefreshInterval);
 		console.error("Failed to fetch stream:", err);
 		container.innerHTML = '<div class="item">Failed to load data stream. Use ?num_records=500 or ?stream=YOUR_NDJSON_URL.</div>';
 	});
