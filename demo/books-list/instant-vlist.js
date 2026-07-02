@@ -26,6 +26,7 @@ The other challenge was to ensure coherent re-calculation of the layout to accur
   let lastLoggedSize; // for debug logging of render window changes
   let lastWheelTime = 0; // to classify scroll intent
   let lastIncrementalUpdateTime = 0; // to monitor performance of incremental updates
+  let conventionalRenderingMode = true; //we start by adding items to the list in traditional way;
 
   let viewportRect = container.getBoundingClientRect();
 
@@ -80,13 +81,33 @@ The other challenge was to ensure coherent re-calculation of the layout to accur
   function onDataUpdated(event = {type: "incremental"|"rebuild"|"eot"}) {  //called by the data source 
     const { type } = event;
     if(isScalerAdjusting(event)) return;
+    if(data.length() < BASE.FEASABLE_LENGTH){ //start with conventional rendering when data is too small.
+        conventionalRenderingMode = true;
+        // BASE.MIN_RENDERED = data.length();
+        // BASE.MAX_RENDERED = data.length();
+        switch(type){
+          case "rebuild":
+            spacerTop.style.height = "0px";
+            spacerBottom.style.height = "0px";
+            visibleList.innerHTML = "";
+            expandConventionalList();
+            break;
+          case "eot":
+          case "incremental":
+            expandConventionalList();
+            break;
+          default:
+            break;
+        }
+        return;
+    }
+    else{
+      conventionalRenderingMode =false;
+    }
+
     switch (type) {
       case "rebuild":
-        if(data.length() < BASE.FEASABLE_LENGTH){//fall back to conventional rendering when data is too small.
-          BASE.MIN_RENDERED = data.length();
-          BASE.MAX_RENDERED = data.length();
-        }
-        else if(data.isStreaming)
+        if(data.isStreaming)
         {
           BASE.EXTEND_CHUNK = 8; //going back to initial values
           BASE.EDGE_EXTEND = 6;  
@@ -100,11 +121,6 @@ The other challenge was to ensure coherent re-calculation of the layout to accur
 
       case "eot": 
         if(data.length() === 0) break; 
-        if(data.length() < BASE.FEASABLE_LENGTH){//fall back to conventional rendering when data is too small.
-          BASE.MIN_RENDERED = data.length();
-          BASE.MAX_RENDERED = data.length();
-          initWindow();
-        }
         BASE.EXTEND_CHUNK = 3; //once transmission ended we reduce boundaries to smoothen scrolling 
         BASE.EDGE_EXTEND = 2;  //(because adding big chunks of items causes more noticeable shutter of the list position)
         updateSpacers(); // data is final → update spacers only, preserve scroll
@@ -122,8 +138,8 @@ The other challenge was to ensure coherent re-calculation of the layout to accur
       default:
         if (renderEndIndex < renderStartIndex) {
           initWindow();
-        } else {
-          requestAnimationFrame(updateSpacers); //wrapping this into rAF allows more dynamic updates of the scrollbar during data load
+        } else { //we stay on the same subset of records in viewport but we need to reflect the size of data change
+          requestAnimationFrame(updateSpacers); //wrapping this into rAF allows updates of the scrollbar to be displayed more fluent during data load
         }
     }
 
@@ -144,6 +160,8 @@ The other challenge was to ensure coherent re-calculation of the layout to accur
     const scrollTop = container.scrollTop;
     const delta = scrollTop - lastScrollTop;
     lastScrollTop = scrollTop;
+    if(conventionalRenderingMode) return; 
+
     const intent = classifyScrollIntent(delta);
     if (intent !== lastIntent && DEBUG_RENDER_WINDOW) {
       console.log("scroll intent →", intent, "renderStartIndex:", renderStartIndex);
@@ -161,10 +179,12 @@ The other challenge was to ensure coherent re-calculation of the layout to accur
   }
 
   let renderItemReExp = null; // we pass this to the renderItem funciton for text highlighting
-  data.subscribeResultChanged(state => { renderItemReExp = state.regex;});
+  data.subscribeResultChanging(
+    state => { renderItemReExp = state.regex;}
+  );
 
   function initWindow() {
-    if (data.length() < BASE.MIN_RENDERED) return;
+    if (data.length() <= BASE.MIN_RENDERED) return;
 
     calculateItemHeights();
 
@@ -174,15 +194,53 @@ The other challenge was to ensure coherent re-calculation of the layout to accur
     renderWindow();
   }
 
-  function calculateItemHeights(){
-      const tempNode = createNode(0);
-      visibleList.appendChild(tempNode);
-      estimatedItemHeight = tempNode.clientHeight;
-      visibleList.removeChild(tempNode);
-      BASE.MIN_RENDERED = Math.ceil(container.clientHeight / estimatedItemHeight) + 2 * BASE.EDGE_EXTEND; // enough items to fill viewport plus buffer for smooth scrolling
-      const style = window.getComputedStyle(tempNode);
-      itemMarginHeight = Math.round(( style.marginTop || 0) + (style.marginBottom || 0));
-      estimatedItemHeight += itemMarginHeight;
+  function resetRenderWindow() {
+    visibleList.replaceChildren();
+    
+    renderStartIndex = 0;
+    renderEndIndex = -1;
+    lastScrollTop = 0;
+    container.scrollTop = 0;
+
+    initWindow();
+  }
+
+  function renderWindow() {
+    const fragment = document.createDocumentFragment();
+
+    for (let i = renderStartIndex; i <= renderEndIndex; i++) {
+      fragment.appendChild(createNode(i));
+    }
+
+    visibleList.innerHTML = "";
+    visibleList.appendChild(fragment);
+    //requestAnimationFrame(updateSpacers); 
+    updateSpacers();
+
+    logRenderWindowIfChanged("renderWindow");
+  }
+
+
+  function logRenderWindowIfChanged(context = "") {
+    if (!DEBUG_RENDER_WINDOW) return;
+
+    const size = renderEndIndex - renderStartIndex + 1;
+
+    if (lastLoggedSize !== size) {
+      lastLoggedSize = size;
+
+      console.log("context:", context,
+        `[render window] size=${size} ` +
+        `(indices ${renderStartIndex}–${renderEndIndex})`
+      );
+    }
+  }
+
+  function expandConventionalList(){
+    const startIndex = (visibleList.children.length == 0)? 0: visibleList.lastChild.dataset.index; 
+    for(let i = startIndex; i< data.length(); i++){
+      appendItem(i);
+    }
   }
 
   function rebuildWindowFromJumpScroll() {
@@ -294,47 +352,6 @@ The other challenge was to ensure coherent re-calculation of the layout to accur
     logRenderWindowIfChanged("prependChunk");
   }
 
-  function renderWindow() {
-    const fragment = document.createDocumentFragment();
-
-    for (let i = renderStartIndex; i <= renderEndIndex; i++) {
-      fragment.appendChild(createNode(i));
-    }
-
-    visibleList.innerHTML = "";
-    visibleList.appendChild(fragment);
-    //requestAnimationFrame(updateSpacers); 
-    updateSpacers();
-
-    logRenderWindowIfChanged("renderWindow");
-  }
-
-  function resetRenderWindow() {
-    visibleList.innerHTML = "";
-
-    renderStartIndex = 0;
-    renderEndIndex = -1;
-    lastScrollTop = 0;
-    container.scrollTop = 0;
-
-    initWindow();
-  }
-
-  function logRenderWindowIfChanged(context = "") {
-    if (!DEBUG_RENDER_WINDOW) return;
-
-    const size = renderEndIndex - renderStartIndex + 1;
-
-    if (lastLoggedSize !== size) {
-      lastLoggedSize = size;
-
-      console.log("context:", context,
-        `[render window] size=${size} ` +
-        `(indices ${renderStartIndex}–${renderEndIndex})`
-      );
-    }
-  }
-
   function appendItem(index) {
     return visibleList.appendChild(createNode(index));
   }
@@ -354,6 +371,16 @@ The other challenge was to ensure coherent re-calculation of the layout to accur
     return el;
   }
 
+  function calculateItemHeights(){
+      const tempNode = createNode(0);
+      visibleList.appendChild(tempNode);
+      estimatedItemHeight = tempNode.clientHeight;
+      visibleList.removeChild(tempNode);
+      BASE.MIN_RENDERED = Math.ceil(container.clientHeight / estimatedItemHeight) + 2 * BASE.EDGE_EXTEND; // enough items to fill viewport plus buffer for smooth scrolling
+      const style = window.getComputedStyle(tempNode);
+      itemMarginHeight = Math.round(( style.marginTop || 0) + (style.marginBottom || 0));
+      estimatedItemHeight += itemMarginHeight;
+  }
 
   function captureVisibleItemPosition(){
     for(const child of visibleList.children) {
@@ -506,6 +533,7 @@ The other challenge was to ensure coherent re-calculation of the layout to accur
       }
     }
 
+
     function armTimerIfNeeded() {
       if (flushTimer !== null) return;
 
@@ -574,8 +602,8 @@ The other challenge was to ensure coherent re-calculation of the layout to accur
 
       if (!hasPredicates && !hasQuery) {
         filtered = null;
+        emitResultChaning();
         onUpdate({ type: "rebuild" });
-        emitResultChanged();
         return;
       }
 
@@ -590,9 +618,8 @@ The other challenge was to ensure coherent re-calculation of the layout to accur
 
         filtered.push(i);
       }
-
+      emitResultChaning();
       onUpdate({ type: "rebuild" });
-      emitResultChanged();
     }
     
     function matches(item) {
@@ -634,7 +661,7 @@ The other challenge was to ensure coherent re-calculation of the layout to accur
       return Array.from(values).sort();
     }
 
-    function emitResultChanged() {
+    function emitResultChaning() {
       for (const fn of resultListeners) {
         try {          
           fn(getResultState());
@@ -644,7 +671,7 @@ The other challenge was to ensure coherent re-calculation of the layout to accur
       }
     }
 
-    function subscribeResultChanged(fn) { //example virtualList.data.subscribeResultChanged(state => console.log("result changed", state))
+    function subscribeResultChanging(fn) { //example virtualList.data.subscribeResultChanging(state => console.log("result changed", state))
       resultListeners.add(fn);
       return () => resultListeners.delete(fn);
     }
@@ -714,11 +741,11 @@ The other challenge was to ensure coherent re-calculation of the layout to accur
         facetPredicates.clear();
         customPredicates.clear();
         filtered = null;
+        emitResultChaning();
         onUpdate({ type: "rebuild" });
-        emitResultChanged();
       }
     };
-    return { fetchStream, abortFetch, isStreaming, length, get, getFacetValues, filterAPI, subscribeResultChanged};
+    return { fetchStream, abortFetch, isStreaming, length, get, getFacetValues, filterAPI, subscribeResultChanging: subscribeResultChanging};
   }
 
   return {
