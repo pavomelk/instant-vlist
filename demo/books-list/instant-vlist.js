@@ -100,7 +100,12 @@ The other challenge was to ensure coherent re-calculation of the layout to accur
         return;
     }
     else{
+      if(!conventionalRenderingMode) return; // the following code executed only when we switch to virtual rendering
       conventionalRenderingMode =false;
+      const itemHeight = calculateItemHeights();
+      renderStartIndex = Math.ceil(container.scrollTop / itemHeight);
+      renderEndIndex = renderStartIndex + BASE.MAX_RENDERED;
+      updateSpacers();
     }
 
     switch (type) {

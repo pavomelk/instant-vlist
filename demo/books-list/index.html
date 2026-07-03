@@ -6,9 +6,14 @@
 	<title>Books - instant-vlist demo</title>
 	<style>
 		body { font-family: system-ui, sans-serif; margin: 0; padding: 16px; }
-		#controls { margin-bottom: 8px; display:flex; gap:8px; align-items:center; flex-wrap: wrap; }
+		#controls { margin-bottom: 8px; display:flex; gap:8px; align-items:flex-end; flex-wrap: wrap; }
+		.control-group { display:flex; flex-direction:column; gap:4px; }
+		.control-group label { font-size:0.8em; color:#444; font-weight:600; }
+		.control-group.control-grow { flex:1; min-width: 220px; }
 		#controls input[type="number"] { width: 120px; padding: 8px; }
+		#controls input[type="text"] { padding:8px; }
 		#controls select { padding: 8px; min-width: 160px; }
+		#controls button { padding:8px 10px; }
 		#status { margin-bottom: 12px; color:#333; font-size:0.95em; }
 		#list { height: 70vh; overflow:auto; border:1px solid #ddd; padding:8px; }
 		.item { padding:8px; border-bottom:1px solid #eee; }
@@ -19,18 +24,39 @@
 </head>
 <body>
 	<div id="controls">
-		<input id="search" placeholder="Search title..." style="flex:1;padding:8px" />
-		<select id="publisher-filter" aria-label="Filter by publisher">
-			<option value="">All publishers</option>
-		</select>
-		<select id="category-filter" aria-label="Filter by category">
-			<option value="">All categories</option>
-		</select>
-		<input id="num-records" type="number" min="1" step="1" aria-label="Number of records to fetch" placeholder="Records" />
-		<button id="apply-num-records">Load</button>
-		<input id="jump-to-record" type="number" min="1" step="1" aria-label="Jump to record number" placeholder="Go to #" />
-		<button id="jump-button">Go</button>
-		<button id="clear">Clear</button>
+		<div class="control-group control-grow">
+			<label for="search">Search</label>
+			<input id="search" type="text" placeholder="Search title..." />
+		</div>
+		<div class="control-group">
+			<label for="publisher-filter">Publisher</label>
+			<select id="publisher-filter" aria-label="Filter by publisher">
+				<option value="">All publishers</option>
+			</select>
+		</div>
+		<div class="control-group">
+			<label for="category-filter">Category</label>
+			<select id="category-filter" aria-label="Filter by category">
+				<option value="">All categories</option>
+			</select>
+		</div>
+		<div class="control-group">
+			<label for="num-records">Records To Fetch</label>
+			<input id="num-records" type="number" min="1" step="1" aria-label="Number of records to fetch" placeholder="Records" />
+		</div>
+		<div class="control-group">
+			<button id="apply-num-records">Load</button>
+		</div>
+		<div class="control-group">
+			<label for="jump-to-record">Jump To Record</label>
+			<input id="jump-to-record" type="number" min="1" step="1" aria-label="Jump to record number" placeholder="Go to #" />
+		</div>
+		<div class="control-group">
+			<button id="jump-button">Go</button>
+		</div>
+		<div class="control-group">
+			<button id="clear">Clear</button>
+		</div>
 	</div>
 	<div id="status">Records: <strong id="record-count">0</strong></div>
 	<div id="list" aria-live="polite"></div>
