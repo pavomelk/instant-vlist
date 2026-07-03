@@ -27,6 +27,10 @@ function getCorsOrigin(request: Request): string | null {
 	return origin;
 }
 
+function clamp(value: number, min: number, max: number): number {
+	return Math.min(Math.max(value, min), max);
+}
+
 export default {
 	async fetch(request, env, ctx): Promise<Response> {
 		const corsOrigin = getCorsOrigin(request);
@@ -51,6 +55,8 @@ export default {
 		const url = new URL(request.url);
 		const requestedRecords = Number.parseInt(url.searchParams.get("num_records") ?? "10", 10);
 		const count = Number.isFinite(requestedRecords) && requestedRecords > 0 ? requestedRecords : 10;
+		const requestedDelay = Number.parseInt(url.searchParams.get("delay") ?? "0", 10);
+		const delayMs = Number.isFinite(requestedDelay) ? clamp(requestedDelay, 0, 250) : 0;
 
 		const generator = new NDJSONItemGenerator();
 		const encoder = new TextEncoder();
@@ -60,7 +66,7 @@ export default {
 				for (let index = 0; index < count; index += 1) {
 					const item = generator.GetNext();
 					controller.enqueue(encoder.encode(`${JSON.stringify(item)}\n`));
-					await new Promise((resolve) => setTimeout(resolve, 100));
+					await new Promise((resolve) => setTimeout(resolve, delayMs));
 				}
 				controller.close();
 			},

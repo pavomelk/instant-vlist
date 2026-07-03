@@ -20,4 +20,20 @@ describe("NDJSONItemGenerator", () => {
 		expect(first.year).toBeLessThanOrEqual(2026);
 		expect(new Set([first.isbn, second.isbn]).size).toBe(2);
 	});
+
+	it("measures time to generate 1000 records without Worker streaming", () => {
+		const generator = new NDJSONItemGenerator();
+		const recordsToGenerate = 1000;
+
+		const start = performance.now();
+		let last;
+		for (let index = 0; index < recordsToGenerate; index += 1) {
+			last = generator.GetNext();
+		}
+		const durationMs = performance.now() - start;
+
+		expect(last?.id).toBe(recordsToGenerate);
+		expect(durationMs).toBeGreaterThanOrEqual(0);
+		console.info(`Generated ${recordsToGenerate} records in ${durationMs.toFixed(2)} ms`);
+	});
 });

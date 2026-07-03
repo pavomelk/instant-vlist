@@ -45,6 +45,11 @@
 			<input id="num-records" type="number" min="1" step="1" aria-label="Number of records to fetch" placeholder="Records" />
 		</div>
 		<div class="control-group">
+			<label for="delay">Delay (0-250)</label>
+			<input id="delay" type="range" min="0" max="250" step="50" aria-label="Request delay in milliseconds" />
+			<div id="delay-value" style="font-size:0.8em;color:#444;font-weight:600;">0 ms</div>
+		</div>
+		<div class="control-group">
 			<button id="apply-num-records">Load</button>
 		</div>
 		<div class="control-group">
@@ -91,14 +96,19 @@
 	const publisherSelect = document.getElementById("publisher-filter");
 	const categorySelect = document.getElementById("category-filter");
 	const numRecordsInput = document.getElementById("num-records");
+	const delayInput = document.getElementById("delay");
+	const delayValue = document.getElementById("delay-value");
 	const applyNumRecordsButton = document.getElementById("apply-num-records");
 	const jumpToRecordInput = document.getElementById("jump-to-record");
 	const jumpButton = document.getElementById("jump-button");
 	const recordCountEl = document.getElementById("record-count");
 	const params = new URLSearchParams(window.location.search);
 	const defaultRecordCount = params.get("num_records") || "1000";
+	const defaultDelay = params.get("delay") || "0";
 	let searchDebounceTimer = null;
 	numRecordsInput.value = defaultRecordCount;
+	delayInput.value = defaultDelay;
+	delayValue.textContent = `${delayInput.value} ms`;
 
 	// Wire search input
 	searchInput.addEventListener("input", (e) => {
@@ -168,9 +178,20 @@
 			return;
 		}
 
+		const delayParsed = Number.parseInt(delayInput.value, 10);
+		const delayValueToSend = Number.isFinite(delayParsed) ? delayParsed : 0;
 		const nextParams = new URLSearchParams(window.location.search);
 		nextParams.set("num_records", String(parsed));
+		nextParams.set("delay", String(delayValueToSend));
 		window.location.search = nextParams.toString();
+	});
+
+	delayInput.addEventListener("input", () => {
+		delayValue.textContent = `${delayInput.value} ms`;
+	});
+
+	delayInput.addEventListener("change", () => {
+		delayValue.textContent = `${delayInput.value} ms`;
 	});
 
 	numRecordsInput.addEventListener("keydown", (e) => {
@@ -220,7 +241,7 @@
 	}, 300);
 
 	// const defaultStreamUrl = `https://books-stream.pavomelk.workers.dev/?num_records=${encodeURIComponent(defaultRecordCount)}`;
-	const defaultStreamUrl = `http://127.0.0.1:8787/?num_records=${encodeURIComponent(defaultRecordCount)}`;
+	const defaultStreamUrl = `http://127.0.0.1:8787/?num_records=${encodeURIComponent(defaultRecordCount)}&delay=${encodeURIComponent(defaultDelay)}`;
 	const streamUrl = params.get("stream") || defaultStreamUrl;
 
 	vlist.data.fetchStream(encodeURI(streamUrl)).catch((err) => {
