@@ -6,8 +6,10 @@
 	<title>Books - instant-vlist demo</title>
 	<style>
 		body { font-family: system-ui, sans-serif; margin: 0; padding: 16px; }
-		#controls { margin-bottom: 12px; display:flex; gap:8px; align-items:center; }
+		#controls { margin-bottom: 8px; display:flex; gap:8px; align-items:center; flex-wrap: wrap; }
+		#controls input[type="number"] { width: 120px; padding: 8px; }
 		#controls select { padding: 8px; min-width: 160px; }
+		#status { margin-bottom: 12px; color:#333; font-size:0.95em; }
 		#list { height: 70vh; overflow:auto; border:1px solid #ddd; padding:8px; }
 		.item { padding:8px; border-bottom:1px solid #eee; }
 		.title { font-weight:700; }
@@ -24,8 +26,13 @@
 		<select id="category-filter" aria-label="Filter by category">
 			<option value="">All categories</option>
 		</select>
+		<input id="num-records" type="number" min="1" step="1" aria-label="Number of records to fetch" placeholder="Records" />
+		<button id="apply-num-records">Load</button>
+		<input id="jump-to-record" type="number" min="1" step="1" aria-label="Jump to record number" placeholder="Go to #" />
+		<button id="jump-button">Go</button>
 		<button id="clear">Clear</button>
 	</div>
+	<div id="status">Records: <strong id="record-count">0</strong></div>
 	<div id="list" aria-live="polite"></div>
 
 	<script src="instant-vlist.js" type="text/javascript"></script>
@@ -57,7 +64,15 @@
 	const searchInput = document.getElementById("search");
 	const publisherSelect = document.getElementById("publisher-filter");
 	const categorySelect = document.getElementById("category-filter");
+	const numRecordsInput = document.getElementById("num-records");
+	const applyNumRecordsButton = document.getElementById("apply-num-records");
+	const jumpToRecordInput = document.getElementById("jump-to-record");
+	const jumpButton = document.getElementById("jump-button");
+	const recordCountEl = document.getElementById("record-count");
+	const params = new URLSearchParams(window.location.search);
+	const defaultRecordCount = params.get("num_records") || "1000";
 	let searchDebounceTimer = null;
+	numRecordsInput.value = defaultRecordCount;
 
 	// Wire search input
 	searchInput.addEventListener("input", (e) => {
@@ -95,6 +110,10 @@
 		buildFacetOptions(categorySelect, vlist.data.getFacetValues("category"), "All categories");
 	}
 
+	function refreshRecordCount() {
+		recordCountEl.textContent = String(vlist.data.length());
+	}
+
 	function applyFacet(attr, value) {
 		if (value) {
 			vlist.filter.addFacet(attr, value);
@@ -113,6 +132,45 @@
 
 	vlist.data.subscribeResultChanging(() => {
 		refreshFacetControls();
+		refreshRecordCount();
+	});
+
+	applyNumRecordsButton.addEventListener("click", () => {
+		const parsed = Number.parseInt(numRecordsInput.value, 10);
+		if (!Number.isFinite(parsed) || parsed <= 0) {
+			numRecordsInput.focus();
+			return;
+		}
+
+		const nextParams = new URLSearchParams(window.location.search);
+		nextParams.set("num_records", String(parsed));
+		window.location.search = nextParams.toString();
+	});
+
+	numRecordsInput.addEventListener("keydown", (e) => {
+		if (e.key === "Enter") {
+			applyNumRecordsButton.click();
+		}
+	});
+
+	function jumpToRecord() {
+		const requestedRecord = Number.parseInt(jumpToRecordInput.value, 10);
+		if (!Number.isFinite(requestedRecord) || requestedRecord <= 0) {
+			jumpToRecordInput.focus();
+			return;
+		}
+
+		const maxIndex = vlist.data.length() - 1;
+		if (maxIndex < 0) return;
+
+		vlist.navigation.jumpTo(Math.min(requestedRecord - 1, maxIndex));
+	}
+
+	jumpButton.addEventListener("click", jumpToRecord);
+	jumpToRecordInput.addEventListener("keydown", (e) => {
+		if (e.key === "Enter") {
+			jumpToRecord();
+		}
 	});
 
 	document.getElementById("clear").addEventListener("click", () => {
@@ -122,18 +180,19 @@
 		categorySelect.value = "";
 		vlist.filter.clearAll();
 		refreshFacetControls();
+		refreshRecordCount();
 	});
 
 	refreshFacetControls();
+	refreshRecordCount();
 	const facetRefreshInterval = setInterval(() => {
 		refreshFacetControls();
+		refreshRecordCount();
 		if (!vlist.data.isStreaming()) {
 			clearInterval(facetRefreshInterval);
 		}
 	}, 300);
 
-	const params = new URLSearchParams(window.location.search);
-	const defaultRecordCount = params.get("num_records") || "1000";
 	// const defaultStreamUrl = `https://books-stream.pavomelk.workers.dev/?num_records=${encodeURIComponent(defaultRecordCount)}`;
 	const defaultStreamUrl = `http://127.0.0.1:8787/?num_records=${encodeURIComponent(defaultRecordCount)}`;
 	const streamUrl = params.get("stream") || defaultStreamUrl;

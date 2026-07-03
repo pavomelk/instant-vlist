@@ -443,7 +443,9 @@ The other challenge was to ensure coherent re-calculation of the layout to accur
     renderWindow();
     lastScrollTop = renderStartIndex * estimatedItemHeight / scaler;
     container.scrollTop = lastScrollTop;
-    requestAnimationFrame(() => visibleList.firstChild?.scrollIntoView({ block: "start" }) );
+    visibleList.firstChild?.scrollIntoView({ block: "start" })
+    //requestAnimationFrame(() => visibleList.firstChild?.scrollIntoView({ block: "start" }) );
+    //requestAnimationFrame(() => visibleList.childNodes[BASE.EDGE_EXTEND]?.scrollIntoView({ block: "start" }) );
   }
 
   function DataSource(onUpdate, options = {}) {
