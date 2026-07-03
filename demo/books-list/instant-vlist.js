@@ -26,7 +26,6 @@ The other challenge was to ensure coherent re-calculation of the layout to accur
   let lastLoggedSize; // for debug logging of render window changes
   let lastWheelTime = 0; // to classify scroll intent
   let lastIncrementalUpdateTime = 0; // to monitor performance of incremental updates
-  let conventionalRenderingMode = true; //we start by adding items to the list in traditional way;
 
   let viewportRect = container.getBoundingClientRect();
 
@@ -38,7 +37,7 @@ The other challenge was to ensure coherent re-calculation of the layout to accur
     MAX_RENDERED: 24, //MAX_RENDERED = MIN_RENDERED + 2 * EXTEND_CHUNK to allow for smooth incremental scrolling without causing too much overhead from rendering too many items, especially when scaling is applied for large datasets. we can experiment with different values to find a good balance between performance and scroll smoothness.
     EXTEND_CHUNK: 8, //nuber of items that go beyond the viewport when we extend the render window during incremental scrolling. this should be enough to allow for smooth scrolling without causing too much overhead from rendering too many items, especially when scaling is applied for large datasets. we can experiment with different values to find a good balance.
     EDGE_EXTEND: 6,  //number of items from the edge of the viewport at which we trigger an extension of the render window during incremental scrolling. this should be enough to allow for smooth scrolling without causing too much overhead from rendering too many items, especially when scaling is applied for large datasets. we can experiment with different values to find a good balance between performance and scroll smoothness.
-    FEASABLE_LENGTH: 100  // minimum number of items that make the virtualized rendering approach feasible. If less than, then we just fall back to rendering all items at once.
+    FEASABLE_LENGTH: 24  // minimum number of items that make the virtualized rendering approach feasible. If less than, then we just fall back to rendering all items at once.
   };
 
   const VIOLENT_SCROLL_DELTA = 800; //this value helps us to differrenciate between rapid and smooth scroll requests.
@@ -81,8 +80,8 @@ The other challenge was to ensure coherent re-calculation of the layout to accur
   function onDataUpdated(event = {type: "incremental"|"rebuild"|"eot"}) {  //called by the data source 
     const { type } = event;
     if(isScalerAdjusting(event) && type != "rebuild") return; //scaler may adjust back to 1 when rebuild is needed. We still need to proceed furter in such cases
-    if(data.length() < BASE.FEASABLE_LENGTH){ //start with conventional rendering when data is too small.
-        conventionalRenderingMode = true;
+    
+    if(data.length() < BASE.MAX_RENDERED){ //start with conventional rendering when data is too small.
         switch(type){
           case "rebuild":
             spacerTop.style.height = "0px";
@@ -98,14 +97,6 @@ The other challenge was to ensure coherent re-calculation of the layout to accur
             break;
         }
         return;
-    }
-    else{
-      if(!conventionalRenderingMode) return; // the following code executed only when we switch to virtual rendering
-      conventionalRenderingMode =false;
-      const itemHeight = calculateItemHeights();
-      renderStartIndex = Math.ceil(container.scrollTop / itemHeight);
-      renderEndIndex = renderStartIndex + BASE.MAX_RENDERED;
-      updateSpacers();
     }
 
     switch (type) {
@@ -163,7 +154,6 @@ The other challenge was to ensure coherent re-calculation of the layout to accur
     const scrollTop = container.scrollTop;
     const delta = scrollTop - lastScrollTop;
     lastScrollTop = scrollTop;
-    if(conventionalRenderingMode) return; 
 
     const intent = classifyScrollIntent(delta);
     if (intent !== lastIntent && DEBUG_RENDER_WINDOW) {
