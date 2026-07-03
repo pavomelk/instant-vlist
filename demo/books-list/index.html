@@ -3,9 +3,14 @@
 <head>
 	<meta charset="utf-8" />
 	<meta name="viewport" content="width=device-width,initial-scale=1" />
-	<title>Books - instant-vlist demo</title>
+	<title>instant-vlist demo: streamed NDJSON book records</title>
 	<style>
 		body { font-family: system-ui, sans-serif; margin: 0; padding: 16px; }
+		#intro { margin-bottom: 16px; max-width: 960px; }
+		#intro h1 { margin: 0 0 8px; font-size: 1.6rem; width: 100%; text-align: center;}
+		#intro p { margin: 0 0 8px; color:#333; line-height:1.5; }
+		#intro .usage { color:#555; font-size:0.95rem; font-style: italic; }
+		#intro .fineprint { color:#555; font-size:0.7rem; color: maroon; }
 		#controls { margin-bottom: 8px; display:flex; gap:8px; align-items:flex-end; flex-wrap: wrap; }
 		.control-group { display:flex; flex-direction:column; gap:4px; }
 		.control-group label { font-size:0.8em; color:#444; font-weight:600; }
@@ -23,6 +28,12 @@
 	</style>
 </head>
 <body>
+	<header id="intro">
+		<h1>Demo page for instant-vlist</h1>
+		<p>This page renders auto-generated NDJSON stream of book-like records. It demonstrates how <a href="https://github.com/pavomelk/instant-vlist" target="_blank" rel="noreferrer">instant-vlist</a> can processes records streams of varying quantity and transfer speed.</p>
+		<p class="usage">Use the search box and facet filters to narrow the stream, choose how many records to fetch with <strong>Records To Fetch</strong>, adjust <strong>Delay</strong> to change the server-side streaming pause between sending each record, and jump directly to a record number with <strong>Jump To Record</strong>.</p>
+		<p class="fineprint">NOTE: This demo uses free hosting and the server may not always return the desired amount of records if it is too big</p>
+	</header>
 	<div id="controls">
 		<div class="control-group control-grow">
 			<label for="search">Search</label>
@@ -240,7 +251,7 @@
 		}
 	}, 300);
 
-	// const defaultStreamUrl = `https://books-stream.pavomelk.workers.dev/?num_records=${encodeURIComponent(defaultRecordCount)}`;
+	//const defaultStreamUrl = `https://books-stream.pavomelk.workers.dev/?num_records=${encodeURIComponent(defaultRecordCount)}&delay=${encodeURIComponent(defaultDelay)}`;
 	const defaultStreamUrl = `http://127.0.0.1:8787/?num_records=${encodeURIComponent(defaultRecordCount)}&delay=${encodeURIComponent(defaultDelay)}`;
 	const streamUrl = params.get("stream") || defaultStreamUrl;
 
