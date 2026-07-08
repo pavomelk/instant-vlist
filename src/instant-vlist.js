@@ -139,9 +139,16 @@ The other challenge was to ensure coherent re-calculation of the layout to accur
 
   }
 
+  let lastDirection = 1;
   let lastIntent = "continuous";
   function classifyScrollIntent(delta) { 
     if (performance.now() - lastWheelTime < 150) { // Recent wheel/trackpad activity → continuous scroll
+      let direction = Math.sign(delta);
+      if(lastDirection != direction){ //prevet scroll event self-oscillation which appears to the user as content "jittering". It is hard to reproduce but can happen sometimes. 
+        lastDirection = direction;
+        return "ignore"; 
+      } 
+      lastDirection = direction;
       return "continuous";
     }
     if (Math.abs(delta) > VIOLENT_SCROLL_DELTA * scaler) { // Large delta without wheel → jump scroll
@@ -162,6 +169,8 @@ The other challenge was to ensure coherent re-calculation of the layout to accur
     }
 
     switch (intent) {
+      case "ignore":
+        return;
       case "jump":
         rebuildWindowFromJumpScroll();
         return;
