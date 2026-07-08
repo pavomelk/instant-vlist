@@ -12,7 +12,7 @@
 		#intro .usage { color:#555; font-size:0.95rem; font-style: italic; }
 		#intro .fineprint { color:#555; font-size:0.7rem; color: maroon; }
 		#controls { margin-bottom: 8px; display:flex; gap:8px; align-items:flex-end; flex-wrap: wrap; }
-		.control-group { display:flex; flex-direction:column; gap:4px; }
+		.control-group { display:flex; flex-direction:column; gap:4px; align-self: flex-start; }
 		.control-group label { font-size:0.8em; color:#444; font-weight:600; }
 		.control-group.control-grow { flex:1; min-width: 220px; }
 		#controls input[type="number"] { width: 120px; padding: 8px; }
@@ -31,8 +31,8 @@
 	<header id="intro">
 		<h1>Demo page for instant-vlist</h1>
 		<p>This page renders auto-generated NDJSON stream of book-like records. It demonstrates how <a href="https://github.com/pavomelk/instant-vlist" target="_blank" rel="noreferrer">instant-vlist</a> can processes records streams of varying quantity and transfer speed.</p>
-		<p class="usage">Use the search box and facet filters to narrow the stream, choose how many records to fetch with <strong>Records To Fetch</strong>, adjust <strong>Delay</strong> to change the server-side streaming pause between sending each record, and jump directly to a record number with <strong>Jump To Record</strong>.</p>
-		<p class="fineprint">NOTE: This demo uses free hosting and the server may not always return the desired amount of records if it is too big</p>
+		<p class="usage">Use the search box and facet filters to narrow the stream. For Category selection use Ctrl+Clik for multiple choices. Choose how many records to fetch with <strong>Records To Fetch</strong>, adjust <strong>Delay</strong> (not for 1M records though) to change the server-side streaming pause before sending next record (may be useful for checking ), and jump directly to a record number with <strong>Jump To Record</strong>.</p>
+		<p class="fineprint">NOTE: This demo was written using AI and it uses free hosting. The server may not always return the desired amount of records if used extensively. 1 Million records is streamed from pre-generated file</p>
 	</header>
 	<div id="controls">
 		<div class="control-group control-grow">
@@ -47,8 +47,7 @@
 		</div>
 		<div class="control-group">
 			<label for="category-filter">Category</label>
-			<select id="category-filter" aria-label="Filter by category">
-				<option value="">All categories</option>
+			<select id="category-filter" aria-label="Filter by category" multiple size="6">
 			</select>
 		</div>
 		<div class="control-group">
@@ -60,11 +59,12 @@
 			</select>
 		</div>
 		<div class="control-group">
-			<label for="delay">Delay (50-250)</label>
-			<input id="delay" type="range" min="50" max="250" step="50" aria-label="Request delay in milliseconds" />
-			<div id="delay-value" style="font-size:0.8em;color:#444;font-weight:600;">50 ms</div>
+			<label for="delay">Delay (10-100)</label>
+			<input id="delay" type="range" min="10" max="100" step="30" aria-label="Request delay in milliseconds" />
+			<div id="delay-value" style="font-size:0.8em;color:#444;font-weight:600;">20 ms</div>
 		</div>
 		<div class="control-group">
+			<label for="apply-num-records">&nbsp;</label>
 			<button id="apply-num-records">Load</button>
 		</div>
 		<div class="control-group">
@@ -72,9 +72,11 @@
 			<input id="jump-to-record" type="number" min="1" step="1" aria-label="Jump to record number" placeholder="Go to #" />
 		</div>
 		<div class="control-group">
+			<label for="jump-button">&nbsp;</label>
 			<button id="jump-button">Go</button>
 		</div>
 		<div class="control-group">
+			<label for="clear">&nbsp;</label>
 			<button id="clear">Clear</button>
 		</div>
 	</div>
@@ -121,11 +123,13 @@
 	const allowedRecordCounts = new Set(["250", "1000", "1000000"]);
 	const requestedRecordCount = params.get("num_records") || "1000";
 	const defaultRecordCount = allowedRecordCounts.has(requestedRecordCount) ? requestedRecordCount : "1000";
-	const requestedDelay = Number.parseInt(params.get("delay") || "50", 10);
+	const requestedDelay = Number.parseInt(params.get("delay") || "10", 10);
 	const defaultDelay = Number.isFinite(requestedDelay)
-		? Math.min(250, Math.max(50, requestedDelay))
-		: 50;
+		? Math.min(100, Math.max(10, requestedDelay))
+		: 20;
 	let searchDebounceTimer = null;
+	let lastCategorySelection = [];
+	let suppressFacetRefresh = false;
 	numRecordsInput.value = defaultRecordCount;
 	delayInput.value = String(defaultDelay);
 	delayValue.textContent = `${delayInput.value} ms`;
@@ -139,19 +143,30 @@
 	});
 
 	function buildFacetOptions(selectEl, values, placeholder) {
-		const selected = selectEl.value;
+		const selected = selectEl.multiple
+			? new Set(Array.from(selectEl.selectedOptions).map(option => option.value))
+			: selectEl.value;
 		selectEl.innerHTML = "";
 
-		const defaultOption = document.createElement("option");
-		defaultOption.value = "";
-		defaultOption.textContent = placeholder;
-		selectEl.appendChild(defaultOption);
+		if (!selectEl.multiple) {
+			const defaultOption = document.createElement("option");
+			defaultOption.value = "";
+			defaultOption.textContent = placeholder;
+			selectEl.appendChild(defaultOption);
+		}
 
 		for (const value of values) {
 			const option = document.createElement("option");
 			option.value = value;
 			option.textContent = value;
+			if (selectEl.multiple) {
+				option.selected = selected.has(value);
+			}
 			selectEl.appendChild(option);
+		}
+
+		if (selectEl.multiple) {
+			return Array.from(selectEl.selectedOptions).map(option => option.value).sort();
 		}
 
 		if (selected && values.includes(selected)) {
@@ -159,11 +174,48 @@
 		} else {
 			selectEl.value = "";
 		}
+
+		return selectEl.value ? [selectEl.value] : [];
+	}
+
+	function applyCategoryFacetSelection(selectedValues) {
+		const normalized = Array.from(new Set(selectedValues)).sort();
+		if (normalized.length === lastCategorySelection.length &&
+			normalized.every((v, i) => v === lastCategorySelection[i])) {
+			return;
+		}
+
+		lastCategorySelection = normalized;
+		if (normalized.length > 0) {
+			vlist.filter.addFacet("category", normalized, "category");
+		} else {
+			vlist.filter.removeFacet("category");
+		}
+	}
+
+	function getCategoryValuesIgnoringCategoryFacet() {
+		if (lastCategorySelection.length === 0) {
+			return vlist.data.getFacetValues("category");
+		}
+
+		// Keep category options stable across multi-selection by reading category values
+		// without the category facet applied, while keeping other facets (e.g. publisher).
+		suppressFacetRefresh = true;
+		vlist.filter.removeFacet("category");
+		const categoryValues = vlist.data.getFacetValues("category");
+		vlist.filter.addFacet("category", lastCategorySelection, "category");
+		suppressFacetRefresh = false;
+		return categoryValues;
 	}
 
 	function refreshFacetControls() {
 		buildFacetOptions(publisherSelect, vlist.data.getFacetValues("publisher"), "All publishers");
-		buildFacetOptions(categorySelect, vlist.data.getFacetValues("category"), "All categories");
+		const categorySelection = buildFacetOptions(
+			categorySelect,
+			getCategoryValuesIgnoringCategoryFacet(),
+			"All categories"
+		);
+		applyCategoryFacetSelection(categorySelection);
 	}
 
 	function refreshRecordCount() {
@@ -182,11 +234,13 @@
 		applyFacet("publisher", e.target.value);
 	});
 
-	categorySelect.addEventListener("change", (e) => {
-		applyFacet("category", e.target.value);
+	categorySelect.addEventListener("change", () => {
+		const selectedCategories = Array.from(categorySelect.selectedOptions).map(option => option.value);
+		applyCategoryFacetSelection(selectedCategories);
 	});
 
 	vlist.data.subscribeResultChanging(() => {
+		if (suppressFacetRefresh) return;
 		refreshFacetControls();
 		refreshRecordCount();
 	});
@@ -200,8 +254,8 @@
 
 		const delayParsed = Number.parseInt(delayInput.value, 10);
 		const delayValueToSend = Number.isFinite(delayParsed)
-			? Math.min(250, Math.max(50, delayParsed))
-			: 50;
+			? Math.min(100, Math.max(10, delayParsed))
+			: 10;
 		const nextParams = new URLSearchParams(window.location.search);
 		nextParams.set("num_records", selectedRecordCount);
 		nextParams.set("delay", String(delayValueToSend));
@@ -240,7 +294,10 @@
 		clearTimeout(searchDebounceTimer);
 		searchInput.value = "";
 		publisherSelect.value = "";
-		categorySelect.value = "";
+		lastCategorySelection = [];
+		Array.from(categorySelect.options).forEach(option => {
+			option.selected = false;
+		});
 		vlist.filter.clearAll();
 		refreshFacetControls();
 		refreshRecordCount();
@@ -259,7 +316,8 @@
 
 	
 	const largeStreamUrl = "https://dl.dropboxusercontent.com/scl/fi/lir1s0h2jc1w4k6wxl6rl/simrecords.ndjson?rlkey=5ckjjq6mx4emszu154ww9rd93&st=gr6jdccd&dl=1";
-	const generatedStreamUrl = `https://books-stream.pavomelk.workers.dev/?num_records=${encodeURIComponent(defaultRecordCount)}&delay=${encodeURIComponent(String(defaultDelay))}`;
+//	const generatedStreamUrl = `https://books-stream.pavomelk.workers.dev/?num_records=${encodeURIComponent(defaultRecordCount)}&delay=${encodeURIComponent(String(defaultDelay))}`;
+	const generatedStreamUrl = `http://127.0.0.1:8787/?num_records=${encodeURIComponent(defaultRecordCount)}&delay=${encodeURIComponent(String(defaultDelay))}`;
 	const defaultStreamUrl = defaultRecordCount === "1000000" ? largeStreamUrl : generatedStreamUrl;
 	const streamUrl = params.get("stream") || defaultStreamUrl;
 

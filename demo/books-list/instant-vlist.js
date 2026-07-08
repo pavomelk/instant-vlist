@@ -648,7 +648,6 @@ The other challenge was to ensure coherent re-calculation of the layout to accur
 
     function getFacetValues(attrName) {
       const values = new Set();
-      const source = filtered ? filtered : raw.keys();
 
       if (filtered) {
         for (const rawIndex of filtered) {
@@ -710,13 +709,14 @@ The other challenge was to ensure coherent re-calculation of the layout to accur
       },
 
       // facet filters (replaceable by key)
-      addFacet: (attr, value) => { //example virtualList.filter.addFacet("FilingType", "Indictment")
-        facetPredicates.set(attr, item => item[attr] === value);
+      addFacet: (attr, values, key = attr) => { //example virtualList.filter.addFacet("Category", "Astronomy") or virtualList.filter.addFacet("category", ["Astronomy", "Art"])
+        const valuesSet = new Set(Array.isArray(values)? values: [values]);
+        facetPredicates.set(key, item => valuesSet.has(item[attr]));
         rebuild();
       },
 
-      removeFacet: attr => { //example virtualList.filter.removeFacet("FilingType")
-        facetPredicates.delete(attr);
+      removeFacet: key => { //example virtualList.filter.removeFacet("category")
+        facetPredicates.delete(key);
         rebuild();
       },
 
