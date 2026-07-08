@@ -53,12 +53,16 @@
 		</div>
 		<div class="control-group">
 			<label for="num-records">Records To Fetch</label>
-			<input id="num-records" type="number" min="1" step="1" aria-label="Number of records to fetch" placeholder="Records" />
+			<select id="num-records" aria-label="Number of records to fetch">
+				<option value="250">250</option>
+				<option value="1000">1000</option>
+				<option value="1000000">1000000</option>
+			</select>
 		</div>
 		<div class="control-group">
-			<label for="delay">Delay (0-250)</label>
-			<input id="delay" type="range" min="0" max="250" step="50" aria-label="Request delay in milliseconds" />
-			<div id="delay-value" style="font-size:0.8em;color:#444;font-weight:600;">0 ms</div>
+			<label for="delay">Delay (50-250)</label>
+			<input id="delay" type="range" min="50" max="250" step="50" aria-label="Request delay in milliseconds" />
+			<div id="delay-value" style="font-size:0.8em;color:#444;font-weight:600;">50 ms</div>
 		</div>
 		<div class="control-group">
 			<button id="apply-num-records">Load</button>
@@ -114,11 +118,16 @@
 	const jumpButton = document.getElementById("jump-button");
 	const recordCountEl = document.getElementById("record-count");
 	const params = new URLSearchParams(window.location.search);
-	const defaultRecordCount = params.get("num_records") || "1000";
-	const defaultDelay = params.get("delay") || "0";
+	const allowedRecordCounts = new Set(["250", "1000", "1000000"]);
+	const requestedRecordCount = params.get("num_records") || "1000";
+	const defaultRecordCount = allowedRecordCounts.has(requestedRecordCount) ? requestedRecordCount : "1000";
+	const requestedDelay = Number.parseInt(params.get("delay") || "50", 10);
+	const defaultDelay = Number.isFinite(requestedDelay)
+		? Math.min(250, Math.max(50, requestedDelay))
+		: 50;
 	let searchDebounceTimer = null;
 	numRecordsInput.value = defaultRecordCount;
-	delayInput.value = defaultDelay;
+	delayInput.value = String(defaultDelay);
 	delayValue.textContent = `${delayInput.value} ms`;
 
 	// Wire search input
@@ -183,16 +192,18 @@
 	});
 
 	applyNumRecordsButton.addEventListener("click", () => {
-		const parsed = Number.parseInt(numRecordsInput.value, 10);
-		if (!Number.isFinite(parsed) || parsed <= 0) {
+		const selectedRecordCount = numRecordsInput.value;
+		if (!allowedRecordCounts.has(selectedRecordCount)) {
 			numRecordsInput.focus();
 			return;
 		}
 
 		const delayParsed = Number.parseInt(delayInput.value, 10);
-		const delayValueToSend = Number.isFinite(delayParsed) ? delayParsed : 0;
+		const delayValueToSend = Number.isFinite(delayParsed)
+			? Math.min(250, Math.max(50, delayParsed))
+			: 50;
 		const nextParams = new URLSearchParams(window.location.search);
-		nextParams.set("num_records", String(parsed));
+		nextParams.set("num_records", selectedRecordCount);
 		nextParams.set("delay", String(delayValueToSend));
 		window.location.search = nextParams.toString();
 	});
@@ -203,12 +214,6 @@
 
 	delayInput.addEventListener("change", () => {
 		delayValue.textContent = `${delayInput.value} ms`;
-	});
-
-	numRecordsInput.addEventListener("keydown", (e) => {
-		if (e.key === "Enter") {
-			applyNumRecordsButton.click();
-		}
 	});
 
 	function jumpToRecord() {
@@ -251,9 +256,11 @@
 		}
 	}, 300);
 
-	//const defaultStreamUrl = `https://books-stream.pavomelk.workers.dev/?num_records=${encodeURIComponent(defaultRecordCount)}&delay=${encodeURIComponent(defaultDelay)}`;
-	//const defaultStreamUrl = `http://127.0.0.1:8787/?num_records=${encodeURIComponent(defaultRecordCount)}&delay=${encodeURIComponent(defaultDelay)}`;
-	const defaultStreamUrl = "https://dl.dropboxusercontent.com/scl/fi/lir1s0h2jc1w4k6wxl6rl/simrecords.ndjson?rlkey=5ckjjq6mx4emszu154ww9rd93&st=gr6jdccd&dl=1"
+
+	
+	const largeStreamUrl = "https://dl.dropboxusercontent.com/scl/fi/lir1s0h2jc1w4k6wxl6rl/simrecords.ndjson?rlkey=5ckjjq6mx4emszu154ww9rd93&st=gr6jdccd&dl=1";
+	const generatedStreamUrl = `https://books-stream.pavomelk.workers.dev/?num_records=${encodeURIComponent(defaultRecordCount)}&delay=${encodeURIComponent(String(defaultDelay))}`;
+	const defaultStreamUrl = defaultRecordCount === "1000000" ? largeStreamUrl : generatedStreamUrl;
 	const streamUrl = params.get("stream") || defaultStreamUrl;
 
 	vlist.data.fetchStream(encodeURI(streamUrl)).catch((err) => {
