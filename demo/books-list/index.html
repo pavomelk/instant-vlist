@@ -316,8 +316,8 @@
 
 	
 	const largeStreamUrl = "https://dl.dropboxusercontent.com/scl/fi/lir1s0h2jc1w4k6wxl6rl/simrecords.ndjson?rlkey=5ckjjq6mx4emszu154ww9rd93&st=gr6jdccd&dl=1";
-//	const generatedStreamUrl = `https://books-stream.pavomelk.workers.dev/?num_records=${encodeURIComponent(defaultRecordCount)}&delay=${encodeURIComponent(String(defaultDelay))}`;
-	const generatedStreamUrl = `http://127.0.0.1:8787/?num_records=${encodeURIComponent(defaultRecordCount)}&delay=${encodeURIComponent(String(defaultDelay))}`;
+	const generatedStreamUrl = `https://books-stream.pavomelk.workers.dev/?num_records=${encodeURIComponent(defaultRecordCount)}&delay=${encodeURIComponent(String(defaultDelay))}`;
+//	const generatedStreamUrl = `http://127.0.0.1:8787/?num_records=${encodeURIComponent(defaultRecordCount)}&delay=${encodeURIComponent(String(defaultDelay))}`;
 	const defaultStreamUrl = defaultRecordCount === "1000000" ? largeStreamUrl : generatedStreamUrl;
 	const streamUrl = params.get("stream") || defaultStreamUrl;
 
