@@ -15,6 +15,7 @@ import { NDJSONItemGenerator } from "./ndjson-generator";
 
 const allowedOrigins = new Set([
 	"https://demo.books-list-instant.pages.dev",
+	"https://books-list-instant.pages.dev",
 	"http://127.0.0.1:5501",
 ]);
 

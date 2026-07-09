@@ -139,16 +139,9 @@ The other challenge was to ensure coherent re-calculation of the layout to accur
 
   }
 
-  let lastDirection = 1;
   let lastIntent = "continuous";
   function classifyScrollIntent(delta) { 
     if (performance.now() - lastWheelTime < 150) { // Recent wheel/trackpad activity → continuous scroll
-      let direction = Math.sign(delta);
-      if(lastDirection != direction){ //prevet scroll event self-oscillation which appears to the user as content "jittering". It is hard to reproduce but can happen sometimes. 
-        lastDirection = direction;
-        return "ignore"; 
-      } 
-      lastDirection = direction;
       return "continuous";
     }
     if (Math.abs(delta) > VIOLENT_SCROLL_DELTA * scaler) { // Large delta without wheel → jump scroll
@@ -285,6 +278,7 @@ The other challenge was to ensure coherent re-calculation of the layout to accur
       lastRect.bottom <
         containerRect.bottom + BASE.EDGE_EXTEND * estimatedItemHeight 
     ) {
+      rollDirection.forward();
       appendChunk();
     }
 
@@ -293,6 +287,7 @@ The other challenge was to ensure coherent re-calculation of the layout to accur
         containerRect.top - BASE.EDGE_EXTEND * estimatedItemHeight &&
       renderStartIndex > 0
     ) {
+      rollDirection.backward();
       prependChunk();
     }
   }
@@ -418,19 +413,38 @@ The other challenge was to ensure coherent re-calculation of the layout to accur
     spacerBottom.style.height = (data.length() - renderEndIndex - 1) * estimatedItemHeight / scaler + "px";
   }
 
+const rollDirection = {   prev: 0,  curr: 0,   i: 0,
+
+  update(direction) {
+    this.i = this.curr === -direction ? this.i + 1 : 0;
+    this.prev = this.curr;
+    this.curr = direction;
+  },
+  forward() {
+    this.update(1);
+  },
+  backward() {
+    this.update(-1);
+  },
+  isJittering() {
+    return this.i > 3;
+  }
+};
+
   let scrollTimeout = null;
   function adjustSpacersDuringScroll(addedHeight) { //for continuous scrolling, we adjust spacers based on actual heights of added/removed items to keep scroll position stable, which is especially important when scaling is applied for large datasets, as estimated heights may be less accurate.
+      if(rollDirection.isJittering()) return;
       const addTop =  renderStartIndex == 0 ? 0 : spacerTop.clientHeight + addedHeight.topHeightDelta;
       spacerTop.style.height = addTop > 0 ? addTop + "px" : "0px";
       const addBottom = renderEndIndex == data.length() - 1 ? 0: spacerBottom.clientHeight + addedHeight.bottomHeightDelta;
       spacerBottom.style.height = addBottom > 0 ? addBottom + "px" : "0px";
       clearTimeout(scrollTimeout);
-      scrollTimeout = setTimeout(()=>{debounceLastScrollEvent()}, 50);
+      scrollTimeout = setTimeout(()=>{debounceLastScrollEvent()}, 20);
   }
 
   let stopDebounce = false;
   function debounceLastScrollEvent(){
-    if(!stopDebounce){ //we don't want endless recursion here
+    if(!stopDebounce && !rollDirection.isJittering()){ //we don't want endless recursion here
       rollWindowContent();
       stopDebounce = true;
     }

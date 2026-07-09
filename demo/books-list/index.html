@@ -3,7 +3,7 @@
 <head>
 	<meta charset="utf-8" />
 	<meta name="viewport" content="width=device-width,initial-scale=1" />
-	<title>instant-vlist demo: streamed NDJSON book records</title>
+	<title>instant-vlist demo page</title>
 	<style>
 		body { font-family: system-ui, sans-serif; margin: 0; padding: 16px; }
 		#intro { margin-bottom: 16px; max-width: 960px; }
@@ -11,6 +11,8 @@
 		#intro p { margin: 0 0 8px; color:#333; line-height:1.5; }
 		#intro .usage { color:#555; font-size:0.95rem; font-style: italic; }
 		#intro .fineprint { color:#555; font-size:0.7rem; color: maroon; }
+		#button-holder {width: 100%; display: flex; flex-direction: row-reverse;}
+		#intro-toggle { margin-bottom: 8px; padding: 8px 10px; }
 		#controls { margin-bottom: 8px; display:flex; gap:8px; align-items:flex-end; flex-wrap: wrap; }
 		.control-group { display:flex; flex-direction:column; gap:4px; align-self: flex-start; }
 		.control-group label { font-size:0.8em; color:#444; font-weight:600; }
@@ -23,6 +25,7 @@
 		#list { height: 70vh; overflow:auto; border:1px solid #ddd; padding:8px; }
 		.item { padding:8px; border-bottom:1px solid #eee; }
 		.title { font-weight:700; }
+		.rec_num {font-weight:400;}
 		.meta { color:#555; font-size:0.9em; margin-top:4px; }
 		mark { background: #fffb91; }
 	</style>
@@ -30,10 +33,13 @@
 <body>
 	<header id="intro">
 		<h1>Demo page for instant-vlist</h1>
-		<p>This page renders auto-generated NDJSON stream of book-like records. It demonstrates how <a href="https://github.com/pavomelk/instant-vlist" target="_blank" rel="noreferrer">instant-vlist</a> can processes records streams of varying quantity and transfer speed.</p>
+		<p>This page renders auto-generated NDJSON stream of book-like records. It demonstrates how <a href="https://github.com/pavomelk/instant-vlist" target="_blank" rel="noreferrer">instant-vlist</a> can processes streams of records of different quantity of records and at different transfer speed.</p>
 		<p class="usage">Use the search box and facet filters to narrow the stream. For Category selection use Ctrl+Clik for multiple choices. Choose how many records to fetch with <strong>Records To Fetch</strong>, adjust <strong>Delay</strong> (not for 1M records though) to change the server-side streaming pause before sending next record (may be useful for checking ), and jump directly to a record number with <strong>Jump To Record</strong>.</p>
 		<p class="fineprint">NOTE: This demo was written using AI and it uses free hosting. The server may not always return the desired amount of records if used extensively. 1 Million records is streamed from pre-generated file</p>
 	</header>
+	<div id="button-holder">
+		<button id="intro-toggle" type="button" aria-expanded="true">Hide Intro</button>
+	</div>
 	<div id="controls">
 		<div class="control-group control-grow">
 			<label for="search">Search</label>
@@ -64,10 +70,6 @@
 			<div id="delay-value" style="font-size:0.8em;color:#444;font-weight:600;">20 ms</div>
 		</div>
 		<div class="control-group">
-			<label for="apply-num-records">&nbsp;</label>
-			<button id="apply-num-records">Load</button>
-		</div>
-		<div class="control-group">
 			<label for="jump-to-record">Jump To Record</label>
 			<input id="jump-to-record" type="number" min="1" step="1" aria-label="Jump to record number" placeholder="Go to #" />
 		</div>
@@ -94,7 +96,7 @@
 
 		return `
 			<div class="item" style="cursor:pointer">
-				<div class="title">${item.id}, ${text}</div>
+				<div class="title"><span class="rec_num">${item.id}.&nbsp;&nbsp;&nbsp;</span>${text}</div>
 				<div class="meta">
 					<span class="author">${item.publisher}</span>
 					• ${item.year}
@@ -115,10 +117,11 @@
 	const numRecordsInput = document.getElementById("num-records");
 	const delayInput = document.getElementById("delay");
 	const delayValue = document.getElementById("delay-value");
-	const applyNumRecordsButton = document.getElementById("apply-num-records");
 	const jumpToRecordInput = document.getElementById("jump-to-record");
 	const jumpButton = document.getElementById("jump-button");
 	const recordCountEl = document.getElementById("record-count");
+	const introToggleButton = document.getElementById("intro-toggle");
+	const introSection = document.getElementById("intro");
 	const params = new URLSearchParams(window.location.search);
 	const allowedRecordCounts = new Set(["250", "1000", "1000000"]);
 	const requestedRecordCount = params.get("num_records") || "1000";
@@ -133,6 +136,13 @@
 	numRecordsInput.value = defaultRecordCount;
 	delayInput.value = String(defaultDelay);
 	delayValue.textContent = `${delayInput.value} ms`;
+
+	introToggleButton.addEventListener("click", () => {
+		const isHidden = introSection.style.display === "none";
+		introSection.style.display = isHidden ? "" : "none";
+		introToggleButton.textContent = isHidden ? "Hide Intro" : "Show Intro";
+		introToggleButton.setAttribute("aria-expanded", isHidden ? "true" : "false");
+	});
 
 	// Wire search input
 	searchInput.addEventListener("input", (e) => {
@@ -245,7 +255,7 @@
 		refreshRecordCount();
 	});
 
-	applyNumRecordsButton.addEventListener("click", () => {
+	function reloadWithSelectedAmount() {
 		const selectedRecordCount = numRecordsInput.value;
 		if (!allowedRecordCounts.has(selectedRecordCount)) {
 			numRecordsInput.focus();
@@ -260,7 +270,9 @@
 		nextParams.set("num_records", selectedRecordCount);
 		nextParams.set("delay", String(delayValueToSend));
 		window.location.search = nextParams.toString();
-	});
+	}
+
+	numRecordsInput.addEventListener("change", reloadWithSelectedAmount);
 
 	delayInput.addEventListener("input", () => {
 		delayValue.textContent = `${delayInput.value} ms`;
@@ -268,6 +280,10 @@
 
 	delayInput.addEventListener("change", () => {
 		delayValue.textContent = `${delayInput.value} ms`;
+		const selectedRecordCount = Number.parseInt(numRecordsInput.value, 10);
+		if (Number.isFinite(selectedRecordCount) && selectedRecordCount < 1000000) {
+			reloadWithSelectedAmount();
+		}
 	});
 
 	function jumpToRecord() {
