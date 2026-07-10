@@ -50,7 +50,7 @@ The other challenge was to ensure coherent re-calculation of the layout to accur
   };
 
   container.style.overflowAnchor = "none"; // to keep browser from arbitrarily adjusting scroll position during DOM mutations, which results in incorrect positioning of rendered items and spacers, which visually appears as no items in the list.
-  container.style.scrollBehavior = "auto"; // don't use "smooth scroll" because lagging in rendering scrollable items will reveal blank spaces of the spacers.  (yes, we may increse number of rendered items to takle that, but it still will look ugly)
+  container.style.scrollBehavior = "contain"; // don't use "smooth scroll" because lagging in rendering scrollable items will reveal blank spaces of the spacers.  (yes, we may increse number of rendered items to takle that, but it still will look ugly)
   container.addEventListener("scroll", onScroll);
   container.addEventListener("wheel", () => { lastWheelTime = performance.now(); }, { passive: true });
   
@@ -162,8 +162,6 @@ The other challenge was to ensure coherent re-calculation of the layout to accur
     }
 
     switch (intent) {
-      case "ignore":
-        return;
       case "jump":
         rebuildWindowFromJumpScroll();
         return;
@@ -269,10 +267,10 @@ The other challenge was to ensure coherent re-calculation of the layout to accur
     const firstRect = visibleList.firstElementChild.getBoundingClientRect();
     const lastRect = visibleList.lastElementChild.getBoundingClientRect();
 
-    //if spacer adjustment does not keep up with the amount of (inertial mouse wheel) continuous scroll requests...
-    if(lastRect.bottom < viewportRect.top || firstRect.top > viewportRect.bottom) {
-      visibleList.children[BASE.EXTEND_CHUNK - 1]?.scrollIntoView({ block: "start" }); 
-    }
+    //this code causes parent content respond to scroll event. If the list is placed in nested scrollable items it may cause content of containing element "jump".
+     if(lastRect.bottom < viewportRect.top || firstRect.top > viewportRect.bottom) { //if spacer adjustment does not keep up with the amount of (inertial mouse wheel) continuous scroll requests...
+       visibleList.children[BASE.EXTEND_CHUNK - 1]?.scrollIntoView({ block: "start", container: "nearest" }); 
+     }
 
     if (
       lastRect.bottom <
@@ -400,7 +398,7 @@ The other challenge was to ensure coherent re-calculation of the layout to accur
       const position = captureVisibleItemPosition();
 
       updateSpacers(); 
-      position.node?.scrollIntoView({block: "start"}); 
+      position.node?.scrollIntoView({block: "nearest"}); 
       container.scrollBy(0, position.topDistance );
       lastScrollTop = container.scrollTop; 
       return true;
@@ -414,7 +412,6 @@ The other challenge was to ensure coherent re-calculation of the layout to accur
   }
 
 const rollDirection = {   prev: 0,  curr: 0,   i: 0,
-
   update(direction) {
     this.i = this.curr === -direction ? this.i + 1 : 0;
     this.prev = this.curr;
@@ -461,7 +458,7 @@ const rollDirection = {   prev: 0,  curr: 0,   i: 0,
     renderWindow();
     lastScrollTop = renderStartIndex * estimatedItemHeight / scaler;
     container.scrollTop = lastScrollTop;
-    visibleList.firstChild?.scrollIntoView({ block: "start" })
+    visibleList.firstChild?.scrollIntoView({ block: "nearest" })
     //requestAnimationFrame(() => visibleList.firstChild?.scrollIntoView({ block: "start" }) );
     //requestAnimationFrame(() => visibleList.childNodes[BASE.EDGE_EXTEND]?.scrollIntoView({ block: "start" }) );
   }
