@@ -89,7 +89,6 @@
 
 	<script>
 
-
 	function renderItem(item, regex) {
 
 		let text = item.title.replaceAll(regex, '\<mark\>\$&\<\/mark\>')||"";
@@ -111,6 +110,7 @@
 
 	const container = document.getElementById("list");
 	const vlist = VirtualList(container, renderItem, item=>item.title); 	
+
 	const searchInput = document.getElementById("search");
 	const publisherSelect = document.getElementById("publisher-filter");
 	const categorySelect = document.getElementById("category-filter");
@@ -341,7 +341,6 @@
 		console.error("Failed to fetch stream:", err);
 		container.innerHTML = '<div class="item">Failed to load data stream. Use ?num_records=500 or ?stream=YOUR_NDJSON_URL.</div>';
 	});
-
 	</script>
 
 </body>
