@@ -1,4 +1,5 @@
-function VirtualList(container, renderItem, extractItemText) {
+/// <reference path="./instant-vlist.d.ts" />
+
 /* 
 This is virtual list whose purpose is to handle rendering datasets that potentially can grow to large amount of items (hundreds of thousands or more). 
 It was designet for being able to display items immediately after they start to arrive from the stream. Data component of this list expects stream to be in *NDJSON* format and it exposes API for further interacting with the data.
@@ -12,6 +13,7 @@ when approaching that limit browsers tend to behave erratically. To address this
 which allows us to handle much larger datasets while still providing fairly smooth scrolling experience.
 The other challenge was to ensure coherent re-calculation of the layout to accurately adjust scroll position in response to DOM mutations. 
 */
+function VirtualList(container, renderItem, extractItemText) {
   
   const { visibleList, spacerTop, spacerBottom } = createDOMNodesForScrolling(container);
 
@@ -45,8 +47,13 @@ The other challenge was to ensure coherent re-calculation of the layout to accur
   const DEBUG_RENDER_WINDOW = true; //if set to true, we get some debug information in console log.
 
   const filter = data.filterAPI;
+
+  function jumpTo(index) {
+    jumpToIndex(index);
+  }
+
   const navigation = {
-    jumpTo: i => jumpToIndex(i)
+    jumpTo
   };
 
   container.style.overflowAnchor = "none"; // to keep browser from arbitrarily adjusting scroll position during DOM mutations, which results in incorrect positioning of rendered items and spacers, which visually appears as no items in the list.
@@ -701,8 +708,8 @@ const rollDirection = {   prev: 0,  curr: 0,   i: 0,
     }
 
     const filterAPI = {
-      // text search
-      setSearch: q => { //example virutalList.filter.setSearch("bank of america")
+
+      setSearch(q) { //example virutalList.filter.setSearch("bank of america")
         if(!extractItemText){
           console.error("Search requires function for extracting item's text to be searched on. Example: [const vlist = VirtualList(container, renderItem, item => item.Title);]");
           return; 
@@ -719,42 +726,46 @@ const rollDirection = {   prev: 0,  curr: 0,   i: 0,
         rebuild();
       },
 
-      // facet filters (replaceable by key)
-      addFacet: (attr, values, key = attr) => { //example virtualList.filter.addFacet("Category", "Astronomy") or virtualList.filter.addFacet("category", ["Astronomy", "Art"])
+
+      addFacet(attr, values, key = attr) { //example virtualList.filter.addFacet("Category", "Astronomy") or virtualList.filter.addFacet("category", ["Astronomy", "Art"])
         const valuesSet = new Set(Array.isArray(values)? values: [values]);
         facetPredicates.set(key, item => valuesSet.has(item[attr]));
         rebuild();
       },
 
-      removeFacet: key => { //example virtualList.filter.removeFacet("category")
+
+      removeFacet(key) { //example virtualList.filter.removeFacet("category")
         facetPredicates.delete(key);
         rebuild();
       },
 
-      clearFacets: () => { //example virtualList.filter.clearFacets()
+
+      clearFacets() { //example virtualList.filter.clearFacets()
         facetPredicates.clear();
         rebuild();
       },
 
-      // arbitrary predicates (stackable)
-      addPredicate: fn => { //example virtualList.filter.addPredicate(item => item.FilingType === "Indictment" && item.CaseNumber.startsWith("IT-02"))
+
+      addPredicate(fn) { //example virtualList.filter.addPredicate(item => item.FilingType === "Indictment" && item.CaseNumber.startsWith("IT-02"))
         customPredicates.add(fn);
         rebuild();
       },
 
-      removePredicate: fn => { //example virtualList.filter.removePredicate(referenceToNonAnonymousFunction)
+
+      removePredicate(fn) { //example virtualList.filter.removePredicate(referenceToNonAnonymousFunction)
 
         customPredicates.delete(fn);
         rebuild();
       },
 
-      clearPredicates: () => {
+
+      clearPredicates() {
         customPredicates.clear();
         rebuild();
       },
 
-      // full reset
-      clearAll: () => {
+
+      clearAll() {
         query = "";
         regex = null;
         facetPredicates.clear();
