@@ -86,7 +86,7 @@ function VirtualList(container, renderItem, extractItemText) {
 
   function onDataUpdated(event = {type: "incremental"|"rebuild"|"eot"}) {  //called by the data source 
     const { type } = event;
-    if(isScalerAdjusting(event) && type != "rebuild") return; //scaler may adjust back to 1 when rebuild is needed. We still need to proceed furter in such cases
+    if(scalerNeededAdjustment(event) && type != "rebuild") return; //scaler may adjust back to 1 when rebuild is needed. We still need to proceed furter in such cases
     
     if(data.length() < BASE.MAX_RENDERED){ //start with conventional rendering when data is too small.
         switch(type){
@@ -394,20 +394,38 @@ function VirtualList(container, renderItem, extractItemText) {
     return {node: visibleList.firstChild, topDistance: 0};
   }
 
-  function isScalerAdjusting(event) {
+  function scalerNeededAdjustment(event) {
     const newScaler = Math.ceil((data.length() * estimatedItemHeight) / MAX_SPACER_HEIGHT) || 1;
 
     if (newScaler !== scaler) { 
       if(DEBUG_RENDER_WINDOW) {
         console.log("Applying scaler", newScaler, "to render window to accommodate large dataset of size", data.length(), "startAt:" + renderStartIndex);
       }
+      
       scaler = newScaler;
-      const position = captureVisibleItemPosition();
+      // let spacerBefore = spacerTop.getClientRects()[0];
+      // console.log(`position before top: ${spacerBefore.top}, height: ${spacerBefore.height}, bottom: ${spacerBefore.bottom}`);
+      // let spacerBAfter = spacerBottom.getClientRects()[0];
+      // console.log(`position bottom before top: ${spacerBAfter.top}, height: ${spacerBAfter.height}, bottom: ${spacerBAfter.bottom}`);
 
-      updateSpacers(); 
-      position.node?.scrollIntoView({block: "nearest"}); 
-      container.scrollBy(0, position.topDistance );
-      lastScrollTop = container.scrollTop; 
+      // requestAnimationFrame(updateSpacers);
+      // let spacerAfter = spacerTop.getClientRects()[0];
+      // console.log(`position after top: ${spacerAfter.top}, height: ${spacerAfter.height}, bottom: ${spacerAfter.bottom}`);
+
+      // spacerBAfter = spacerBottom.getClientRects()[0];
+      // console.log(`position bottom after top: ${spacerBAfter.top}, height: ${spacerBAfter.height}, bottom: ${spacerBAfter.bottom}`);
+
+
+      // //spacerTop.style.height =  spacerAfter.top + spacerAfter.bottom - spacerBefore.bottom + "px";
+      // console.log(`new height: ${spacerTop.clientHeight}`);
+
+       const position = captureVisibleItemPosition();
+       requestAnimationFrame(()=>{
+          updateSpacers();
+          position.node?.scrollIntoView({block: "start", container: "nearest"}); 
+          container.scrollBy(0, position.topDistance );
+          lastScrollTop = container.scrollTop; 
+       }); 
       return true;
     }
     return false;
