@@ -395,7 +395,6 @@ function VirtualList(container, renderItem, extractItemText) {
   }
 
   function scalerNeededAdjustment(event) {
-  function scalerNeededAdjustment(event) {
     const newScaler = Math.ceil((data.length() * estimatedItemHeight) / MAX_SPACER_HEIGHT) || 1;
 
     if (newScaler !== scaler) { 
