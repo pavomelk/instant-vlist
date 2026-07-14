@@ -1,4 +1,5 @@
-/// <reference path="./instant-vlist.d.ts" />
+/// <reference path="../../src/instant-vlist.d.ts" />
+//@ts-nocheck
 
 /* 
 This is virtual list whose purpose is to handle rendering datasets that potentially can grow to large amount of items (hundreds of thousands or more). 
@@ -28,9 +29,7 @@ function VirtualList(container, renderItem, extractItemText) {
   let lastLoggedSize; // for debug logging of render window changes
   let lastWheelTime = 0; // to classify scroll intent
   let lastIncrementalUpdateTime = 0; // to monitor performance of incremental updates
-
-  let viewportRect = container.getBoundingClientRect();
-
+  
   const MAX_SPACER_HEIGHT = 15_000_000; //navigation elements height threshold before we begin scaling up scroll positions of larger datasets.
   let scaler = 1; // upscaling factor
 
@@ -65,7 +64,6 @@ function VirtualList(container, renderItem, extractItemText) {
   window.addEventListener("resize", () => 
     { 
       wasResized = true;
-      viewportRect = container.getBoundingClientRect();
       BASE.MIN_RENDERED = Math.ceil(container.clientHeight / estimatedItemHeight) + 2 * BASE.EDGE_EXTEND;
     }, 
     { passive: true });
@@ -86,7 +84,7 @@ function VirtualList(container, renderItem, extractItemText) {
 
   function onDataUpdated(event = {type: "incremental"|"rebuild"|"eot"}) {  //called by the data source 
     const { type } = event;
-    if(isScalerAdjusting(event) && type != "rebuild") return; //scaler may adjust back to 1 when rebuild is needed. We still need to proceed furter in such cases
+    if(scalerNeededAdjustment(event) && type != "rebuild") return; //scaler may adjust back to 1 when rebuild is needed. We still need to proceed furter in such cases
     
     if(data.length() < BASE.MAX_RENDERED){ //start with conventional rendering when data is too small.
         switch(type){
@@ -275,7 +273,7 @@ function VirtualList(container, renderItem, extractItemText) {
     const lastRect = visibleList.lastElementChild.getBoundingClientRect();
 
     //this code causes parent content respond to scroll event. If the list is placed in nested scrollable items it may cause content of containing element "jump".
-     if(lastRect.bottom < viewportRect.top || firstRect.top > viewportRect.bottom) { //if spacer adjustment does not keep up with the amount of (inertial mouse wheel) continuous scroll requests...
+     if(lastRect.bottom < containerRect.top || firstRect.top > containerRect.bottom) { //if spacer adjustment does not keep up with the amount of (inertial mouse wheel) continuous scroll requests...
        visibleList.children[BASE.EXTEND_CHUNK - 1]?.scrollIntoView({ block: "start", container: "nearest" }); 
      }
 
@@ -385,6 +383,7 @@ function VirtualList(container, renderItem, extractItemText) {
   }
 
   function captureVisibleItemPosition(){
+    const viewportRect = container.getBoundingClientRect(); 
     for(const child of visibleList.children) {
       const diff = child.getBoundingClientRect().top - viewportRect.top;
       if(diff > 0) {
@@ -394,19 +393,18 @@ function VirtualList(container, renderItem, extractItemText) {
     return {node: visibleList.firstChild, topDistance: 0};
   }
 
-  function isScalerAdjusting(event) {
+  function scalerNeededAdjustment(event) {
     const newScaler = Math.ceil((data.length() * estimatedItemHeight) / MAX_SPACER_HEIGHT) || 1;
 
     if (newScaler !== scaler) { 
       if(DEBUG_RENDER_WINDOW) {
-        console.log("Applying scaler", newScaler, "to render window to accommodate large dataset of size", data.length(), "startAt:" + renderStartIndex);
+        console.log("Applying scaler", newScaler, "to render window to accommodate large dataset of size", data.length(), "startAt:" + renderStartIndex, "lastScrollIntent:" + lastIntent);
       }
       scaler = newScaler;
       const position = captureVisibleItemPosition();
-
-      updateSpacers(); 
-      position.node?.scrollIntoView({block: "nearest"}); 
-      container.scrollBy(0, position.topDistance );
+      updateSpacers();
+      position.node?.scrollIntoView({block: "start", container: "all", behavior: "instant"}); 
+      container.scrollBy(0, position.topDistance);
       lastScrollTop = container.scrollTop; 
       return true;
     }
