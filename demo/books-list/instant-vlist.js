@@ -85,6 +85,7 @@ function VirtualList(container, renderItem, extractItemText) {
   function onDataUpdated(event = {type: "incremental"|"rebuild"|"eot"}) {  //called by the data source 
     const { type } = event;
     if(scalerNeededAdjustment(event) && type != "rebuild") return; //scaler may adjust back to 1 when rebuild is needed. We still need to proceed furter in such cases
+    if(scalerNeededAdjustment(event) && type != "rebuild") return; //scaler may adjust back to 1 when rebuild is needed. We still need to proceed furter in such cases
     
     if(data.length() < BASE.MAX_RENDERED){ //start with conventional rendering when data is too small.
         switch(type){
@@ -394,12 +395,14 @@ function VirtualList(container, renderItem, extractItemText) {
   }
 
   function scalerNeededAdjustment(event) {
+  function scalerNeededAdjustment(event) {
     const newScaler = Math.ceil((data.length() * estimatedItemHeight) / MAX_SPACER_HEIGHT) || 1;
 
     if (newScaler !== scaler) { 
       if(DEBUG_RENDER_WINDOW) {
         console.log("Applying scaler", newScaler, "to render window to accommodate large dataset of size", data.length(), "startAt:" + renderStartIndex, "lastScrollIntent:" + lastIntent);
       }
+      
       scaler = newScaler;
       const position = captureVisibleItemPosition();
       updateSpacers();
