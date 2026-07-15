@@ -34,16 +34,15 @@ function VirtualList(container, renderItem, extractItemText) {
   let scaler = 1; // upscaling factor
 
   const BASE = {
-    MIN_RENDERED: 8,  //this is being changed later in the code based on estimatedItemHeight and container height to render enough items to fill the viewport plus some buffer for smoother scrolling, while keeping it low enough to avoid performance issues with large datasets. we can calculate the number of items that can fit in the viewport and add a buffer of a few items on either side to allow for smooth incremental scrolling without hitting MAX_RENDERED too quickly.
+    MIN_RENDERED: 8,  //start with this value and update later based on estimatedItemHeight and container heigh.
     MAX_RENDERED: 24, //MAX_RENDERED = MIN_RENDERED + 2 * EXTEND_CHUNK to allow for smooth incremental scrolling without causing too much overhead from rendering too many items, especially when scaling is applied for large datasets. we can experiment with different values to find a good balance between performance and scroll smoothness.
     EXTEND_CHUNK: 8, //nuber of items that go beyond the viewport when we extend the render window during incremental scrolling. this should be enough to allow for smooth scrolling without causing too much overhead from rendering too many items, especially when scaling is applied for large datasets. we can experiment with different values to find a good balance.
     EDGE_EXTEND: 6,  //number of items from the edge of the viewport at which we trigger an extension of the render window during incremental scrolling. this should be enough to allow for smooth scrolling without causing too much overhead from rendering too many items, especially when scaling is applied for large datasets. we can experiment with different values to find a good balance between performance and scroll smoothness.
-    FEASABLE_LENGTH: 24  // minimum number of items that make the virtualized rendering approach feasible. If less than, then we just fall back to rendering all items at once.
   };
 
-  const VIOLENT_SCROLL_DELTA = 800; //this value helps us to differrenciate between rapid and smooth scroll requests.
+  const VIOLENT_SCROLL_DELTA = 800; //distinguish between rapid and smooth scroll requests.
 
-  const DEBUG_RENDER_WINDOW = true; //if set to true, we get some debug information in console log.
+  const DEBUG_RENDER_WINDOW = false; //get some debug information in console log.
 
   const filter = data.filterAPI;
 
@@ -272,7 +271,7 @@ function VirtualList(container, renderItem, extractItemText) {
     const firstRect = visibleList.firstElementChild.getBoundingClientRect();
     const lastRect = visibleList.lastElementChild.getBoundingClientRect();
 
-    //this code causes parent content respond to scroll event. If the list is placed in nested scrollable items it may cause content of containing element "jump".
+    //BUG: this code causes parent content respond to scroll event. If the list is placed in nested scrollable items it may cause content of containing element "jump".
      if(lastRect.bottom < containerRect.top || firstRect.top > containerRect.bottom) { //if spacer adjustment does not keep up with the amount of (inertial mouse wheel) continuous scroll requests...
        visibleList.children[BASE.EXTEND_CHUNK - 1]?.scrollIntoView({ block: "start", container: "nearest" }); 
      }
@@ -465,8 +464,6 @@ const rollDirection = {   prev: 0,  curr: 0,   i: 0,
     lastScrollTop = renderStartIndex * estimatedItemHeight / scaler;
     container.scrollTop = lastScrollTop;
     visibleList.firstChild?.scrollIntoView({ block: "nearest" })
-    //requestAnimationFrame(() => visibleList.firstChild?.scrollIntoView({ block: "start" }) );
-    //requestAnimationFrame(() => visibleList.childNodes[BASE.EDGE_EXTEND]?.scrollIntoView({ block: "start" }) );
   }
 
   function DataSource(onUpdate, options = {}) {
