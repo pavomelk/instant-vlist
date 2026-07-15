@@ -85,7 +85,6 @@ function VirtualList(container, renderItem, extractItemText) {
   function onDataUpdated(event = {type: "incremental"|"rebuild"|"eot"}) {  //called by the data source 
     const { type } = event;
     if(scalerNeededAdjustment(event) && type != "rebuild") return; //scaler may adjust back to 1 when rebuild is needed. We still need to proceed furter in such cases
-    if(scalerNeededAdjustment(event) && type != "rebuild") return; //scaler may adjust back to 1 when rebuild is needed. We still need to proceed furter in such cases
     
     if(data.length() < BASE.MAX_RENDERED){ //start with conventional rendering when data is too small.
         switch(type){
