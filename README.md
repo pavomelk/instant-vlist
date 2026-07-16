@@ -12,13 +12,12 @@ working example can be seen here: https://books-list-instant.pages.dev/?num_reco
 
 Code is vanilla javascript without any dependencies thus just can be downloaded raw: https://raw.githubusercontent.com/pavomelk/instant-vlist/refs/heads/main/src/instant-vlist.js
 
-
 #### USAGE:
 ##### The simplest scenario would be:
 ```javascript
 const container = document.getElementById("list");
 const vlist = VirtulaList(container, item=>`<p>${item.text}</p>`);
-vlist.data.fetchStream("https://www.myserver.dev/ndjson", container)
+vlist.data.fetchStream("https://www.myserver.dev/ndjson")
 ```
 ##### To get the search working:
 * define method of extracting text to be searched
