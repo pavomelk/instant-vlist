@@ -1,4 +1,4 @@
-##### DISCLAIMER: This project is not intended to be actively maintained. The code is provided "as is" in hope its functionality will be useful for somebody. Author tried to make the code as stable as possible and it is tested on range of modern browsers but it is not "battle tested in many projects".
+##### DISCLAIMER: This project is not intended to be actively maintained. The code is provided "as is" in hope its functionality will be useful for somebody. Author tried to make the code as stable as possible and it is tested on range of modern browsers but it is not "battle tested in many projects". Its strong point is to be usable during data loading. If that is not an requirement, then there are plenty of more elegant solutions out there.
 ***
 This virtual list implementation makes each record accessible on the client's page as soon as it arrives from the server. It adequately adjusts UI part to the available amount of data during transmission and it is capable of handling number of records in range of many hundreds of thousands. 
 
@@ -12,13 +12,12 @@ working example can be seen here: https://books-list-instant.pages.dev/?num_reco
 
 Code is vanilla javascript without any dependencies thus just can be downloaded raw: https://raw.githubusercontent.com/pavomelk/instant-vlist/refs/heads/main/src/instant-vlist.js
 
-
 #### USAGE:
 ##### The simplest scenario would be:
 ```javascript
 const container = document.getElementById("list");
 const vlist = VirtulaList(container, item=>`<p>${item.text}</p>`);
-vlist.data.fetchStream("https://www.myserver.dev/ndjson", container)
+vlist.data.fetchStream("https://www.myserver.dev/ndjson")
 ```
 ##### To get the search working:
 * define method of extracting text to be searched
