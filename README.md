@@ -21,7 +21,9 @@ vlist.data.fetchStream("https://www.myserver.dev/ndjson")
 ```
 ##### To get the search working:
 * define method of extracting text to be searched
+<<<<<<< HEAD
 * if you indend to highlight the content, do so inside your renderer function. Use RegExp object that is passed as a second parameter to that funciton at the runtime. 
+>>>>>>> 766a30ccf7e9dae3a089c74e1d3f08d709640caa
 
 The code in this case may look something like this:
 
