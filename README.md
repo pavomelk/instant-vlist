@@ -1,16 +1,24 @@
-##### DISCLAIMER: This project is not intended to be actively maintained. The code is provided "as is" in hope its functionality will be useful for somebody. Author tried to make the code as stable as possible and it is tested on range of modern browsers but it is not "battle tested in many projects". Its strong point is to be usable during data loading. If that is not an requirement, then there are plenty of more elegant solutions out there.
+##### DISCLAIMER
+
+This project is not intended to be actively maintained. The code is provided "as is" in the hope that its functionality will be useful to someone. The author has tried to make it as stable as possible, and it has been tested on a range of modern browsers. However, it has not been battle-tested across many production projects.
+
+Its main advantage is that records become available to the user interface as soon as they arrive from the server. If this is not a requirement, there are many more elegant solutions available.
+
 ***
-This virtual list implementation makes each record accessible on the client's page as soon as it arrives from the server. It adequately adjusts UI part to the available amount of data during transmission and it is capable of handling number of records in range of many hundreds of thousands. 
 
-Data required to be streamed in [NDJSON](https://en.wikipedia.org/wiki/JSON_streaming) format. Individual items for rendering expected to be more or less of the same size. 
+This virtual list implementation makes each record available in the UI as soon as it arrives from the server. It dynamically adjusts to the amount of data received during transmission and is capable of handling hundreds of thousands of records.
 
-The list exposes basic funcitonality for filtering, searching and navigation without much of a "sugar". 
+Data must be streamed in https://en.wikipedia.org/wiki/JSON_streaming format. Individual items are expected to be roughly similar in size.
 
-Not minified code with descriptive comments takes around 30K. 
+The list provides basic functionality for filtering, searching, and navigation without many additional convenience features.
 
-working example can be seen here: https://books-list-instant.pages.dev/?num_records=250&delay=40  (Thanks, Copilot ;)
+The unminified source code, including descriptive comments, is approximately 30 KB.
 
-Code is vanilla javascript without any dependencies thus just can be downloaded raw: https://raw.githubusercontent.com/pavomelk/instant-vlist/refs/heads/main/src/instant-vlist.js
+A working example can be found here:
+https://books-list-instant.pages.dev/?num_records=250&delay=40  (Thanks, Copilot 😉)
+
+The code is written in vanilla JavaScript and has no dependencies, so it can be downloaded directly from GitHub:
+https://raw.githubusercontent.com/pavomelk/instant-vlist/refs/heads/main/src/instant-vlist.js
 
 #### USAGE:
 ##### The simplest scenario would be:

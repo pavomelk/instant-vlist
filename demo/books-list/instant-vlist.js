@@ -1,18 +1,16 @@
 /// <reference path="../../src/instant-vlist.d.ts" />
 //@ts-nocheck
 
-/* 
-This is virtual list whose purpose is to handle rendering datasets that potentially can grow to large amount of items (hundreds of thousands or more). 
-It was designet for being able to display items immediately after they start to arrive from the stream. Data component of this list expects stream to be in *NDJSON* format and it exposes API for further interacting with the data.
-The basic idea of of this implementation is to present data to the client in small *Window* of items around the current scroll position, and dynamically mutate that window as the user scrolls. 
-We trick the scrollbar into thinking the entire list is rendered by using top and bottom spacer DOM elements that take up the appropriate height.
-We use two ways of mutating rendered items depending on the scrolling type:
-- incremental growth: when user scrolls within the rendered window, we append/prepend a few items at a time and remove from the opposite end if we exceed MAX_RENDERED. this allows for smooth scrolling with a large dataset while keeping DOM size manageable.
-- hard reset: when user scrolls violently (e.g. dragging scrollbar thumb), we jump-scroll and render a new window centered around the new scroll position based on estimated height of items.
-One of the challenges of presenting large data as scrollable content is finding good way to compensate for browser's limitations on maximum height of elements (around 33 million pixels in Chrome), 
-when approaching that limit browsers tend to behave erratically. To address this, we introduce dynamic scaling of the render window and spacers when we detect that total height is growing beyond a certain threshold (MAX_SPACER_HEIGHT), 
-which allows us to handle much larger datasets while still providing fairly smooth scrolling experience.
-The other challenge was to ensure coherent re-calculation of the layout to accurately adjust scroll position in response to DOM mutations. 
+/*
+This is a virtual list designed to render datasets that can potentially grow to a very large number of items (hundreds of thousands or more).
+It was designed to display items as soon as they begin arriving from a stream. The data component expects the stream to be in NDJSON format and exposes an API for further interaction with the data.
+The basic idea behind this implementation is to present data to the user through a small window of items centered around the current scroll position, while dynamically updating that window as the user scrolls.
+The scrollbar is tricked into behaving as if the entire list were rendered by using top and bottom spacer elements that occupy the appropriate amount of vertical space.
+Two rendering strategies are used depending on the scrolling behavior:
+- Incremental growth: when the user scrolls within the currently rendered window, a small number of items are appended or prepended as needed. Items are removed from the opposite end once MAX_RENDERED is exceeded. This allows smooth scrolling through large datasets while keeping the DOM size manageable.
+- Hard reset: when the user performs a large scroll jump (for example, by dragging the scrollbar thumb), the rendered window is rebuilt around the new position using estimated item heights.
+One of the challenges of presenting large datasets as scrollable content is dealing with browser limitations on the maximum height of elements (approximately 33 million pixels in Chrome). As that limit is approached, browser behavior tends to become unreliable.
+To address this issue, the implementation dynamically scales the render window and spacer elements whenever the estimated total height exceeds a predefined threshold (MAX_SPACER_HEIGHT). This makes it possible to handle significantly larger datasets while still providing a reasonably smooth scrolling experience.
 */
 function VirtualList(container, renderItem, extractItemText) {
   
