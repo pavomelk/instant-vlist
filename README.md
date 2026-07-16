@@ -1,4 +1,4 @@
-##### DISCLAIMER: This project is not intended to be actively maintained. The code is provided "as is" in hope its functionality will be useful for somebody. Author tried to make the code as stable as possible and it is tested on range of modern browsers but it is not "battle tested in many projects".
+##### DISCLAIMER: This project is not intended to be actively maintained. The code is provided "as is" in hope its functionality will be useful for somebody. Author tried to make the code as stable as possible and it is tested on range of modern browsers but it is not "battle tested in many projects". Its strong point is to be usable during data loading. If that is not an requirement, then there are plenty of more elegant solutions out there.
 ***
 This virtual list implementation makes each record accessible on the client's page as soon as it arrives from the server. It adequately adjusts UI part to the available amount of data during transmission and it is capable of handling number of records in range of many hundreds of thousands. 
 
