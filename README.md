@@ -1,14 +1,11 @@
-##### DISCLAIMER
+##### DISCLAIMER: This project is not intended to be actively maintained. The code is provided "as is" in the hope that its functionality will be useful to someone. The author has tried to make it as stable as possible, and it has been tested on a range of modern browsers. However, it has not been battle-tested across many production projects.
 
-This project is not intended to be actively maintained. The code is provided "as is" in the hope that its functionality will be useful to someone. The author has tried to make it as stable as possible, and it has been tested on a range of modern browsers. However, it has not been battle-tested across many production projects.
-
-Its main advantage is that records become available to the user interface as soon as they arrive from the server. If this is not a requirement, there are many more elegant solutions available.
-
+##### Its main advantage is that records become available to the user interface as soon as they arrive from the server. If this is not a requirement, there are many more elegant solutions available.
 ***
 
 This virtual list implementation makes each record available in the UI as soon as it arrives from the server. It dynamically adjusts to the amount of data received during transmission and is capable of handling hundreds of thousands of records.
 
-Data must be streamed in https://en.wikipedia.org/wiki/JSON_streaming format. Individual items are expected to be roughly similar in size.
+Data must be streamed in [NDJSON](https://en.wikipedia.org/wiki/JSON_streaming) format. Individual items are expected to be roughly similar in size.
 
 The list provides basic functionality for filtering, searching, and navigation without many additional convenience features.
 
